@@ -14,7 +14,7 @@ class MainGUI(object):
 
         self.path, filename = os.path.split(os.path.realpath(__file__))
         self.root = tk.Tk()
-        self.root.title('Send files to semanticScholar')
+        self.root.title('Zotero2SemanticScholar')
         self.root.geometry('350x250')
         self.root.protocol("WM_DELETE_WINDOW", self.onClosing)
         # Email entry:
