@@ -135,7 +135,7 @@ class MainGUI(object):
             return
         messagebox.showinfo(
                 'Info', 'The application may not responding during scrapping.\n Go make yourself a coffee, it may take a few minutes.')
-        scrapper = SemanticScholarScrapper(self.logFile)
+        scrapper = SemanticScholarScrapper(self.logFile, self.path)
         self.lblLoading.config(text="Login in progress...")
         isConnected = scrapper.connect_to_account(self.email, self.passwd)
         if(scrapper.is_connected == True):

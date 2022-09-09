@@ -12,6 +12,7 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
@@ -26,7 +27,7 @@ class SemanticScholarScrapper(object):
     """
     # _web_driver = webdriver.Firefox()
 
-    def __init__(self, log_file, timeout=15, time_between_api_call=0.3, headless=True,
+    def __init__(self, log_file, path, timeout=15, time_between_api_call=0.3, headless=True,
                  site_url='https://www.semanticscholar.org/',
                  site_sign_in_url='https://www.semanticscholar.org/sign-in'):
         """
@@ -39,6 +40,7 @@ class SemanticScholarScrapper(object):
         self._site_url = site_url
         self._site_sign_in_url = site_sign_in_url
         self._web_driver: webdriver.Firefox = None
+        self._path = path
 
         self._timeout = timeout
         self._time_between_api_call = time_between_api_call
@@ -193,10 +195,7 @@ class SemanticScholarScrapper(object):
             # raise
         return True
 
-    def _start_browser(self):
-        options = Options()
-        options.headless = True
-        self._web_driver = webdriver.Firefox(options=options)
+
 
     def _close_browser(self):
         self._web_driver.close()
@@ -295,7 +294,12 @@ class SemanticScholarScrapper(object):
 
         return True
 
-
-# s = SemanticScholarScrapper()
-# s.connect_to_account("david.algis@tutamail.com", "mdpTest67")
-# s.scrap_paper_by_title("Simulating Ocean Water", False)
+    def _start_browser(self):
+        options = Options()
+        options.headless = True
+        if os.name == 'nt':
+            driverService = Service(self._path + "//driver//geckodriver.exe")
+            self._web_driver = webdriver.Firefox(service=driverService, options=options)
+        else:
+            self._web_driver = webdriver.Firefox(options=options)
+            
