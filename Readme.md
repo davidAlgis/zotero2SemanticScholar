@@ -1,6 +1,6 @@
 # Zotero to Semantic Scholar
 
-Zotero and ² are very powerful. I personally use the first to manage my bibliography and generate bibtex for my own notes and the second as an alternative to Google Scholar to alert me on the latest papers. 
+Zotero and Semantic Scholar are very powerful. I personally use the first to manage my bibliography and generate bibtex for my own notes and the second as an alternative to Google Scholar to alert me on the latest papers. 
 However, it can be boring to enter his bibliography in each site, even more when it's composed of hundred of different papers ! Therefore, I made this project __to send the bibliography from Zotero to Semantic Scholar and to add alert on articles__.
 
 ## How to send data to Semantic Scholar
