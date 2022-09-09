@@ -17,7 +17,7 @@ To install them use this command :
 ```
 pip install pandas, csv, tkinter, distance, selenium
 ```
-- You need the driver firefox for selenium that are available [here](https://github.com/mozilla/geckodriver/releases). Moreover, the folder downloaded here need to be in path. (see https://stackoverflow.com/questions/44272416/how-to-add-a-folder-to-path-environment-variable-in-windows-10-with-screensho) 
+- You need the driver firefox for selenium that are available [here](https://github.com/mozilla/geckodriver/releases). Moreover, the folder downloaded here need to be in path. 
 - Finally build `main.py` file.
 
 I didn't try the project elsewhere than on windows, but I think it could works on linux or macOS, it may require additional installations.
