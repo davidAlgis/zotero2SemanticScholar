@@ -11,6 +11,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.firefox.options import Options
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions
@@ -193,7 +194,9 @@ class SemanticScholarScrapper(object):
         return True
 
     def _start_browser(self):
-        self._web_driver = webdriver.Firefox()
+        options = Options()
+        options.headless = True
+        self._web_driver = webdriver.Firefox(options=options)
 
     def _close_browser(self):
         self._web_driver.close()

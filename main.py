@@ -65,8 +65,6 @@ class MainGUI(object):
             self.saveFile = open(self.saveFileName, "a", encoding="utf-8")
             self.hasAlreadySaveFile = True
             self.saveFileDataFrame = pd.read_csv(self.saveFileName)
-            # print(self.saveFileDataFrame)
-            # print((self.saveFileDataFrame['Key'] == "AT56HMFX").any())
 
     def onClosing(self):
         # if messagebox.askokcancel("Quit", "Do you want to quit?"):
@@ -128,20 +126,13 @@ class MainGUI(object):
         self.email = self.entryEmail.get()
         self.passwd = self.entryPasswd.get()
         if(self.email == '' or self.passwd == ''):
-            # TODO: to remove
-            self.email = "david.algis@tutamail.com"
-            self.passwd = "mdpTest67"
             self.lblLoading.config(text="Please sign-in above")
-            #messagebox.showerror('Error', 'Please fill the login field above')
-            # return
+            messagebox.showerror('Error', 'Please fill the login field above')
+            return
         if(self.hasFile == False):
-            self.fileName = "C://Users//david//Documents//Recherches//pluginZoteroSemanticSchool//these.csv"
-            self.lblLoading.config(text="Please select a file...")
-            self._csvToDataFrame()
-            # TODO: to remove
-            # messagebox.showerror(
-            #     'Error', 'Please select a csv file containing your zotero librairies')
-            # return
+            messagebox.showerror(
+                'Error', 'Please select a csv file containing your zotero librairies')
+            return
         messagebox.showinfo(
                 'Info', 'The application may not responding during scrapping.\n Go make yourself a coffee, it may take a few minutes.')
         scrapper = SemanticScholarScrapper(self.logFile)
@@ -182,7 +173,8 @@ class MainGUI(object):
             if(saveToLibrary == False):
                 self.writeInLog(
                     "Could not save " + row['Title'] + "in library, but add it to alert.\n")
-            self.saveFile.write("\""+row['Key']+"\", \""+row['Title']+"\"\n")
+            title = row['Title'].replace(',', '')
+            self.saveFile.write("\""+row['Key']+"\", \""+title+"\"\n")
             self.writeInLog("add "+ row['Title'] + " to save file.\n")
             print(self.saveFileName)
 
