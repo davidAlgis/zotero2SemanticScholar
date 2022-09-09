@@ -1,6 +1,6 @@
 # Zotero to semantic scholar
 
-Zotero and SemanticScholar are very powerful. I personally use the first to manage my bibliography and generate bibtex for my own notes and the second as an alternative to googleScholar to alert me on the latest papers. 
+Zotero and SemanticScholar are very powerful. I personally use the first to manage my bibliography and generate bibtex for my own notes and the second as an alternative to Google Scholar to alert me on the latest papers. 
 However, it can be boring to enter his bibliography in each site, even more when it's composed of hundred of different papers ! Therefore, I made this project __to send the bibliography from Zotero to SemanticScholar__.
 
 ## How to send data to SemanticScholar
@@ -16,11 +16,18 @@ To install them use this command :
 pip install pandas, csv, tkinter, distance, selenium
 ```
 - You need the driver firefox for selenium that are available [here](https://github.com/mozilla/geckodriver/releases). Moreover, the folder downloaded here need to be in path. (see https://stackoverflow.com/questions/44272416/how-to-add-a-folder-to-path-environment-variable-in-windows-10-with-screensho) 
-- Finally build `main.py` file
+- Finally build `main.py` file.
 
 I didn't try the project elsewhere than on windows, but I think it could works on linux or macOS, it may require additional installations.
 
-## Issue 
+## Potential improvements
 
-If you have some issue, do not hesitate to put them in [github issue](https://github.com/davidAlgis/zotero2SemanticScholar/issues).
+- Test it on other OS than Windows.
+- Make a script to automatize the installation.
+- Package the script in an executable.
+- Switching from an external gui to a zotero add-on integrated directly in zotero.
+
+## Issues
+
+If you have some issue with the application, do not hesitate to put them in [github issue](https://github.com/davidAlgis/zotero2SemanticScholar/issues).
 
