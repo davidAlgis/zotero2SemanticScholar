@@ -1,13 +1,13 @@
-# Zotero to semantic scholar
+# Zotero to Semantic Scholar
 
-Zotero and SemanticScholar are very powerful. I personally use the first to manage my bibliography and generate bibtex for my own notes and the second as an alternative to Google Scholar to alert me on the latest papers. 
-However, it can be boring to enter his bibliography in each site, even more when it's composed of hundred of different papers ! Therefore, I made this project __to send the bibliography from Zotero to SemanticScholar and to add alert on articles__.
+Zotero and ² are very powerful. I personally use the first to manage my bibliography and generate bibtex for my own notes and the second as an alternative to Google Scholar to alert me on the latest papers. 
+However, it can be boring to enter his bibliography in each site, even more when it's composed of hundred of different papers ! Therefore, I made this project __to send the bibliography from Zotero to Semantic Scholar and to add alert on articles__.
 
-## How to send data to SemanticScholar
+## How to send data to Semantic Scholar
 
 In Zotero export the library in __format CSV__ (File/Export Library), then launch the gui. Complete the login and password fields with your semanticscholar account informations. Select the csv file you export just before. Finally click on _Send data to SemanticScholar.com..._, wait for a minute... that's it ! 🙂 
 
-There is a save system, to know which papers has been sent to semanticScholar. Therefore, if you need to send a new part of your library to semanticscholar it'll only send the new articles. Likewise, if the application crash your progression will be saved.
+There is a save system, to know which papers has been sent to Semantic Scholar. Therefore, if you need to send a new part of your library to Semantic Scholar it'll only send the new articles. Likewise, if the application crash your progression will be saved.
 
 ## Building
 
