@@ -7,7 +7,7 @@ However, it can be boring to enter your bibliography in each site, even more whe
 
 In Zotero, export the library in __format CSV__ (File/Export Library), then launch the gui. Complete the login and password fields with your semanticscholar account informations. Select the csv file you exported just before. Finally, click on _Send data to SemanticScholar.com..._, wait a minute... that's it ! 🙂 
 
-There is a save system, to know which papers has been sent to Semantic Scholar. Therefore, if you need to send a new part of your library to Semantic Scholar it'll only send the new articles. Likewise, if the application crash your progression will be saved.
+There is a save system, to know which papers has been sent to Semantic Scholar. Therefore, if you need to send a new part of your library to Semantic Scholar it will only send the new articles. Likewise, if the application crash, your progression will be saved.
 
 ## Building
 
