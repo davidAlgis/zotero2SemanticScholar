@@ -21,7 +21,7 @@ For windows os skip to step 4.
 3. You need the driver firefox for selenium that are available [here](https://github.com/mozilla/geckodriver/releases). Moreover, the folder downloaded here need to be in path.
 4. Finally build `main.py` file.
 
-I didn't try the project elsewhere than on windows, but I think it could works on linux or macOS, it may require additional installations.
+I didn't try the project elsewhere than on windows, but I think it could works on linux or macOS, it may requires additional installations.
 
 ## Potential improvements
 
