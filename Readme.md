@@ -15,10 +15,12 @@ There is a save system, to know which papers has been sent to Semantic Scholar. 
 2. You need the following package : `pandas, csv, tkinter, distance, and selenium`
 To install them use this command in the project folder :
 ```
-pip install -r requirements_dev.txt
+pip install -r requirements.txt
 ```
 For windows os skip to step 4. 
+
 3. You need the driver firefox for selenium that are available [here](https://github.com/mozilla/geckodriver/releases). Moreover, the folder downloaded here need to be in path.
+
 4. Finally build `main.py` file.
 
 I didn't try the project elsewhere than on windows, but I think it could works on linux or macOS, it may requires additional installations.
@@ -33,4 +35,6 @@ I didn't try the project elsewhere than on windows, but I think it could works o
 ## Issues
 
 If you have some issue with the application, do not hesitate to put them in [github issue](https://github.com/davidAlgis/zotero2SemanticScholar/issues).
+
+
 
