@@ -113,7 +113,8 @@ class MainGUI(object):
 
         self.data = self.data[['Ajouter une alarme', 'Ajouter dans la librairie',
                                'Key', 'Title', 'Author', 'Item Type', 'Publication Year']]
-        self.data = self.data.loc[self.data['Item Type'] == 'journalArticle']
+        self.data = self.data.loc[self.data['Item Type'].isin([
+            'journalArticle', 'conferencePaper', 'bookSection', 'preprint', 'thesis'])]
         self.hasFile = True
         # for index, row in self.saveFileDataFrame.iterrows():
         #     if((self.data['Key'] == row['Key']).any()):
@@ -134,7 +135,7 @@ class MainGUI(object):
                 'Error', 'Please select a csv file containing your zotero librairies')
             return
         messagebox.showinfo(
-                'Info', 'The application may not responding during scrapping.\n Go make yourself a coffee, it may take a few minutes.')
+            'Info', 'The application may not responding during scrapping.\n Go make yourself a coffee, it may take a few minutes.')
         scrapper = SemanticScholarScrapper(self.logFile, self.path)
         self.lblLoading.config(text="Login in progress...")
         isConnected = scrapper.connect_to_account(self.email, self.passwd)
@@ -175,7 +176,7 @@ class MainGUI(object):
                     "Could not save " + row['Title'] + "in library, but add it to alert.\n")
             title = row['Title'].replace(',', '')
             self.saveFile.write("\""+row['Key']+"\", \""+title+"\"\n")
-            self.writeInLog("add "+ row['Title'] + " to save file.\n")
+            self.writeInLog("add " + row['Title'] + " to save file.\n")
             print(self.saveFileName)
 
         self.lblLoading.config(text="Finish sending data.")
