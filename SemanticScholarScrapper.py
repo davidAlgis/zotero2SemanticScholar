@@ -84,10 +84,9 @@ class SemanticScholarScrapper(object):
         """
         if call_browser:
             self._start_browser()
-
         self._search_paper_by_name(paper_title)
         hasOpenFirstLink = self._open_first_link_in_search_page()
-        if(hasOpenFirstLink == False):
+        if (hasOpenFirstLink == False):
             return False
         return self._check_paper_page(paper_title)
 
@@ -99,7 +98,7 @@ class SemanticScholarScrapper(object):
         hasFind = self._wait_element_by_class_name(
             'dropdown-filters__result-count')
 
-        if(hasFind == False):
+        if (hasFind == False):
             return False
 
         papers_div = self._web_driver.find_element(By.CLASS_NAME,
@@ -195,8 +194,6 @@ class SemanticScholarScrapper(object):
             # raise
         return True
 
-
-
     def _close_browser(self):
         self._web_driver.close()
 
@@ -211,7 +208,7 @@ class SemanticScholarScrapper(object):
         hasFind = self._wait_element_by_name(
             id_email, "Could not connect to the login page.")
 
-        if(hasFind == False):
+        if (hasFind == False):
             return False
         email_input_box = self._web_driver.find_element("name", id_email)
         email_input_box.send_keys(email)
@@ -227,7 +224,7 @@ class SemanticScholarScrapper(object):
 
         hasFind = self._wait_element_by_class_name(
             "search-input__label", "Unable to sign-in.")
-        if(hasFind == False):
+        if (hasFind == False):
             return False
 
         self.is_connected = True
@@ -245,7 +242,7 @@ class SemanticScholarScrapper(object):
         except NoSuchElementException:
             disableAlert = True
 
-        if(disableAlert == False):
+        if (disableAlert == False):
             return True
 
         alertText = 'Activate Alert'
@@ -258,7 +255,7 @@ class SemanticScholarScrapper(object):
                 self._web_driver.find_element(
                     By.XPATH, str("//span[text()='"+alertText+"']"))
             except NoSuchElementException:
-                if(disableAlert):
+                if (disableAlert):
                     print("Unable to add alert")
                     return False
 
@@ -299,7 +296,7 @@ class SemanticScholarScrapper(object):
         options.headless = True
         if os.name == 'nt':
             driverService = Service(self._path + "//driver//geckodriver.exe")
-            self._web_driver = webdriver.Firefox(service=driverService, options=options)
+            self._web_driver = webdriver.Firefox(
+                service=driverService, options=options)
         else:
             self._web_driver = webdriver.Firefox(options=options)
-            

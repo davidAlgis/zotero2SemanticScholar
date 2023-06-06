@@ -107,9 +107,7 @@ class MainGUI(object):
 
     def _csvToDataFrame(self):
         self.lblLoading.config(text="Reading library...")
-
         self.data = pd.read_csv(self.fileName)
-
         val = []
         for i in range(len(self.data.index)):
             val.append(True)
@@ -120,23 +118,21 @@ class MainGUI(object):
         self.data = self.data[['Ajouter une alarme', 'Ajouter dans la librairie',
                                'Key', 'Title', 'Author', 'Item Type', 'Publication Year']]
         self.data = self.data.loc[self.data['Item Type'].isin([
-            'journalArticle', 'conferencePaper', 'bookSection', 'preprint', 'thesis'])]
+            'journalArticle', 'conferencePaper', 'bookSection', 'preprint', 'thesis', 'book'])]
         self.hasFile = True
         # for index, row in self.saveFileDataFrame.iterrows():
-        #     if((self.data['Key'] == row['Key']).any()):
-        #         self.data = self.data.drop(self.data.loc(self.data['Key'] == row['Key']))
-        # print(data)
 
     def _sendDataToSemanticscholar(self):
         self.lblLoading.config(text="Connection to semanticScholar.com...")
 
         self.email = self.entryEmail.get()
         self.passwd = self.entryPasswd.get()
-        if(self.email == '' or self.passwd == ''):
+        if (self.email == '' or self.passwd == ''):
             self.lblLoading.config(text="Please sign-in above")
             messagebox.showerror('Error', 'Please fill the login field above')
             return
-        if(self.hasFile == False):
+        if (self.hasFile == False):
+
             messagebox.showerror(
                 'Error', 'Please select a csv file containing your zotero librairies')
             return
@@ -145,7 +141,7 @@ class MainGUI(object):
         scrapper = SemanticScholarScrapper(self.logFile, self.path)
         self.lblLoading.config(text="Login in progress...")
         isConnected = scrapper.connect_to_account(self.email, self.passwd)
-        if(scrapper.is_connected == True):
+        if (scrapper.is_connected == True):
             self.lblLoading.config(text="Sending data to semanticScholar...")
         else:
             self.lblLoading.config(
@@ -155,39 +151,39 @@ class MainGUI(object):
             return
         Alert = ""
         for index, row in self.data.iterrows():
-            if((self.saveFileDataFrame['Key'] == row['Key']).any()):
+            if ((self.saveFileDataFrame['Key'] == row['Key']).any()):
                 print("skip : " + row['Title'])
                 continue
             print("searching " + row['Title'])
             hasAddPaper = scrapper.scrap_paper_by_title(
                 row['Title'], False)
-            if(hasAddPaper == False):
+            if (hasAddPaper == False):
                 msg = "Could not add " + row['Title']+"\n"
                 self.writeInLog(msg)
                 Alert += msg
                 continue
             addAlert = scrapper.alert()
             saveToLibrary = scrapper.save_to_library()
-            if(addAlert == False and saveToLibrary == False):
+            if (addAlert == False and saveToLibrary == False):
                 msg = "Could not add alert on " + row['Title']+"\n"
                 self.writeInLog(
                     msg)
                 Alert += msg
                 continue
-            if(addAlert == False):
+            if (addAlert == False):
                 self.writeInLog(
                     "Could not add alert on " + row['Title'] + ", but add it to library.\n")
-            if(saveToLibrary == False):
+            if (saveToLibrary == False):
                 self.writeInLog(
                     "Could not save " + row['Title'] + "in library, but add it to alert.\n")
             title = row['Title'].replace(',', '')
             self.saveFile.write("\""+row['Key']+"\", \""+title+"\"\n")
-            self.writeInLog("add " + row['Title'] + " to save file.\n")
-            print(self.saveFileName)
+            self.writeInLog(
+                "add " + row['Title'] + " to save file. " + self.saveFileName + " \n")
 
         self.lblLoading.config(text="Finish sending data.")
 
-        if(Alert != ''):
+        if (Alert != ''):
             messagebox.showerror('Scrapping is over', Alert)
 
     def writeInLog(self, msg):
