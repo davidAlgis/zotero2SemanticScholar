@@ -57,8 +57,14 @@ class MainGUI(object):
         self.logFile = open(self.logFileName, "a", encoding="utf-8")
         self.hasAlreadySaveFile = False
 
+        if os.path.isfile("bibliography.csv"):
+            print(
+                "Has found bibliography.csv, it will be used by default, if no other file will be send")
+            self.fileName = "bibliography.csv"
+            self._csvToDataFrame()
+
     def _initSaveData(self):
-        if(os.path.exists(self.saveFileName) == False):
+        if (os.path.exists(self.saveFileName) == False):
             self.saveFile = open(self.saveFileName, "a", encoding="utf-8")
             self.saveFile.write("\"Key\",\"Title\"\n")
         else:
