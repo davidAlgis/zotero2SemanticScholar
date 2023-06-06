@@ -278,15 +278,15 @@ class SemanticScholarScrapper(object):
         except NoSuchElementException:
             inLibrary = True
 
-        if(inLibrary == False):
+        if (inLibrary == False):
             return True
 
         try:
             self._web_driver.find_element(
                 By.XPATH, "//span[text()='Save to Library']")
         except NoSuchElementException:
-            if(inLibrary):
-                print("ne trouve pas le bouton librairie")
+            if (inLibrary):
+                print("Could not find the library button")
                 return False
 
         self._web_driver.find_element(
