@@ -121,12 +121,12 @@ class SemanticScholarScrapper(object):
 
         self._wait_element_by_tag_name('h1')
 
-        h1_list = self._web_driver.find_elements(By.TAG_NAME, 'h1')
-        h1 = [h1 for h1 in h1_list if h1.get_attribute(
-            'data-selenium-selector') == 'paper-detail-title'][0]
+        h1 = self._web_driver.find_element(
+            By.CSS_SELECTOR, 'h1[data-test-id="paper-detail-title"]')
         title = h1.text
-
         if not 0 <= distance.levenshtein(paper_title, title) <= 10:
+            print(paper_title + " seems to not corresponds to the first title " +
+                  title + " that has been found on semantic scholar")
             return False
         return True
 
