@@ -5,7 +5,7 @@ However, it can be boring to enter your bibliography in each site, even more whe
 
 ## How to send data to Semantic Scholar
 
-In Zotero, export the library in __format CSV__ (File/Export Library), then launch the gui. Complete the login and password fields with your semanticscholar account informations. Select the csv file you exported just before. Finally, click on _Send data to SemanticScholar.com..._, wait a minute... that's it ! 🙂 
+In Zotero, export the library in __format CSV__ (File/Export Library), then launch the gui. Complete the login and password fields with your semanticscholar account informations. Select the csv file you exported just before. If you don't select any csv it will look by default is there is a `bibliography.csv` file in the current folder. Finally, click on _Send data to SemanticScholar.com..._, wait a few minutes... that's it ! 🙂 
 
 There is a save system, to know which papers has been sent to Semantic Scholar. Therefore, if you need to send a new part of your library to Semantic Scholar it will only send the new articles. Likewise, if the application crash, your progression will be saved.
 
@@ -31,6 +31,8 @@ I didn't try the project elsewhere than on windows, but I think it could works o
 - Make a script to automatize the installation.
 - Package the script in an executable.
 - Switching from an external gui to a zotero add-on integrated directly in zotero.
+- Add unit test
+- For now it'll only look for zotero item of this type : `journalArticle`, `conferencePaper`, `bookSection`, `preprint`, `thesis`, or `book`. If you want to add other type add them on `121` of `main.py`.
 
 ## Issues
 
