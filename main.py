@@ -54,8 +54,11 @@ class MainGUI(object):
         self.logFileName = self.path + "//log.txt"
         self.saveFileDataFrame = pd.DataFrame()
         self._initSaveData()
-        self.logFile = open(self.logFileName, "a", encoding="utf-8")
+        self.logFile = open(self.logFileName, "a",
+                            encoding="utf-8", errors='ignore')
         self.hasAlreadySaveFile = False
+        self._autoFillID()
+        self.hasWriteIdInLog = False
 
         if os.path.isfile("bibliography.csv"):
             print(
@@ -65,10 +68,12 @@ class MainGUI(object):
 
     def _initSaveData(self):
         if (os.path.exists(self.saveFileName) == False):
-            self.saveFile = open(self.saveFileName, "a", encoding="utf-8")
+            self.saveFile = open(self.saveFileName, "a",
+                                 encoding="utf-8", errors='ignore')
             self.saveFile.write("\"Key\",\"Title\"\n")
         else:
-            self.saveFile = open(self.saveFileName, "a", encoding="utf-8")
+            self.saveFile = open(self.saveFileName, "a",
+                                 encoding="utf-8", errors='ignore')
             self.hasAlreadySaveFile = True
             self.saveFileDataFrame = pd.read_csv(self.saveFileName)
 
@@ -132,7 +137,6 @@ class MainGUI(object):
             messagebox.showerror('Error', 'Please fill the login field above')
             return
         if (self.hasFile == False):
-
             messagebox.showerror(
                 'Error', 'Please select a csv file containing your zotero librairies')
             return
@@ -141,7 +145,8 @@ class MainGUI(object):
         scrapper = SemanticScholarScrapper(self.logFile, self.path)
         self.lblLoading.config(text="Login in progress...")
         isConnected = scrapper.connect_to_account(self.email, self.passwd)
-        if (scrapper.is_connected == True):
+        if (scrapper.is_connected):
+            self.writeInLog("Is connected.")
             self.lblLoading.config(text="Sending data to semanticScholar...")
         else:
             self.lblLoading.config(
@@ -187,8 +192,27 @@ class MainGUI(object):
             messagebox.showerror('Scrapping is over', Alert)
 
     def writeInLog(self, msg):
+        if os.stat(self.logFileName).st_size == 0 and self.hasWriteIdInLog == False:
+            print("write id")
+            self.logFile.write("id : " + self.email + "\n")
+            self.hasWriteIdInLog = True
+        else:
+            print("content is not null")
+        print("\n")
         print(msg)
         self.logFile.write(msg)
+
+    def _autoFillID(self):
+        with open(self.logFileName, 'r', encoding="utf-8", errors='ignore') as logFile:
+            # Read the first line
+            first_line = logFile.readline().strip()
+            # Extract the part after "id :"
+            if (first_line[0:5] != "id : "):
+                return
+            else:
+                id_part = first_line[5:]
+                if (id_part != ''):
+                    self.entryEmail.insert(0, id_part)
 
     def MainLoop(self):
         self.root.mainloop()
