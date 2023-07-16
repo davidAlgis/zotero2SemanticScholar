@@ -63,7 +63,7 @@ class SemanticScholarScrapper(object):
         for paper_name in tqdm.tqdm(paper_title_list):
             try:
                 paper_dict = self.scrap_paper_by_title(
-                    paper_name, call_browser=False)
+                    str(paper_name), call_browser=False)
                 paper_id = paper_dict['paperId']
                 papers_dict[paper_id] = paper_dict
             except KeyError:
@@ -84,11 +84,11 @@ class SemanticScholarScrapper(object):
         """
         if call_browser:
             self._start_browser()
-        self._search_paper_by_name(paper_title)
+        self._search_paper_by_name(str(paper_title))
         hasOpenFirstLink = self._open_first_link_in_search_page()
         if (hasOpenFirstLink == False):
             return False
-        return self._check_paper_page(paper_title)
+        return self._check_paper_page(str(paper_title))
 
     def _open_first_link_in_search_page(self) -> bool:
         """
@@ -123,8 +123,8 @@ class SemanticScholarScrapper(object):
         h1 = self._web_driver.find_element(
             By.CSS_SELECTOR, 'h1[data-test-id="paper-detail-title"]')
         title = h1.text
-        if not 0 <= distance.levenshtein(paper_title, title) <= 10:
-            print(paper_title + " seems to not corresponds to the first title " +
+        if not 0 <= distance.levenshtein(str(paper_title), title) <= 10:
+            print(str(paper_title) + " seems to not corresponds to the first title " +
                   title + " that has been found on semantic scholar")
             return False
         return True
@@ -133,9 +133,8 @@ class SemanticScholarScrapper(object):
         """
         Go to the search page for 'paper_name'.
         """
-
         self._web_driver.get(str(
-            "https://www.semanticscholar.org/search?q=" + paper_title + "&sort=relevance"))
+            "https://www.semanticscholar.org/search?q=" + str(paper_title) + "&sort=relevance"))
 
     def _wait_element_by_tag_name(self, tag_name, msg="") -> bool:
         """

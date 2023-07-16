@@ -157,13 +157,13 @@ class MainGUI(object):
         Alert = ""
         for index, row in self.data.iterrows():
             if ((self.saveFileDataFrame['Key'] == row['Key']).any()):
-                print("skip : " + row['Title'])
+                print("skip : " + str(row['Title']))
                 continue
-            print("searching " + row['Title'])
+            print("searching " + str(row['Title']))
             hasAddPaper = scrapper.scrap_paper_by_title(
                 row['Title'], False)
             if (hasAddPaper == False):
-                msg = "Could not add " + row['Title']+"\n"
+                msg = "Could not add " + str(row['Title']) + "\n"
                 self.writeInLog(msg)
                 Alert += msg
                 continue
