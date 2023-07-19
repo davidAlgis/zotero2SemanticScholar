@@ -278,15 +278,16 @@ class SemanticScholarScrapper(object):
             return True
 
         try:
-            self._web_driver.find_element(
+            element = self._web_driver.find_element(
                 By.XPATH, "//span[text()='Save to Library']")
         except NoSuchElementException:
             if (inLibrary):
                 print("Could not find the library button")
                 return False
 
-        self._web_driver.find_element(
-            By.XPATH, "//span[text()='Save to Library']").click()
+        # Use JavaScript to click the element, avoiding potential 
+        # ElementClickInterceptedException error
+        self._web_driver.execute_script("arguments[0].click();", element)
 
         return True
 
