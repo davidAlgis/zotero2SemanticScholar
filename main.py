@@ -71,6 +71,11 @@ class MainGUI(object):
             self.saveFile = open(self.saveFileName, "a",
                                  encoding="utf-8", errors='ignore')
             self.saveFile.write("\"Key\",\"Title\"\n")
+            self.saveFile.close()
+            self.saveFileDataFrame = pd.read_csv(self.saveFileName)
+            self.saveFile = open(self.saveFileName, "a",
+                                 encoding="utf-8", errors='ignore')
+            
         else:
             self.saveFile = open(self.saveFileName, "a",
                                  encoding="utf-8", errors='ignore')
