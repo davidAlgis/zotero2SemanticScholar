@@ -258,8 +258,12 @@ class SemanticScholarScrapper(object):
                     print("Unable to add alert")
                     return False
 
-        self._web_driver.find_element(
-            By.XPATH, str("//span[text()='"+alertText+"']")).click()
+        try:
+            self._web_driver.find_element(By.XPATH, str(
+                "//span[text()='"+alertText+"']")).click()
+        except Exception as e:
+            print(f"Unable to click on alert text...: {e}")
+            return False
         return True
 
     def save_to_library(self) -> bool:
