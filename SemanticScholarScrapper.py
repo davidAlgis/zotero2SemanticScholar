@@ -296,8 +296,9 @@ class SemanticScholarScrapper(object):
         return True
 
     def _start_browser(self):
-        options = Options()
-        options.headless = True
+
+        options = webdriver.FirefoxOptions()
+        options.add_argument("-headless")  # Here
         if os.name == 'nt':
             driverService = Service(self._path + "//driver//geckodriver.exe")
             self._web_driver = webdriver.Firefox(
