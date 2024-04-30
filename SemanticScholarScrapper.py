@@ -124,8 +124,8 @@ class SemanticScholarScrapper(object):
             By.CSS_SELECTOR, 'h1[data-test-id="paper-detail-title"]')
         title = h1.text
         if not 0 <= distance.levenshtein(str(paper_title), title) <= 10:
-            print(str(paper_title) + " seems to not corresponds to the first title " +
-                  title + " that has been found on semantic scholar")
+            self.log_file.write(str(paper_title) + " seems to not corresponds to the first title " +
+                                title + " that has been found on semantic scholar")
             return False
         return True
 
@@ -146,11 +146,9 @@ class SemanticScholarScrapper(object):
                 (By.TAG_NAME, tag_name))
             WebDriverWait(self._web_driver, self._timeout).until(
                 element_present)
-        except TimeoutException:
-            print("Error - " + msg +
-                  "\nTimeoutException - could not find "+class_name)
+        except Exception as e:
             self.log_file.write(
-                "Error - " + msg + "\nTimeoutException - could not find "+class_name)
+                "Error - " + msg + f" {e} - could not find "+class_name)
             return False
             # raise
         return True
@@ -165,11 +163,9 @@ class SemanticScholarScrapper(object):
                 (By.NAME, name))
             WebDriverWait(self._web_driver, self._timeout).until(
                 element_present)
-        except TimeoutException:
-            print("Error - " + msg +
-                  "\nTimeoutException - could not find "+class_name)
+        except Exception as e:
             self.log_file.write(
-                "Error - " + msg + "\nTimeoutException - could not find "+class_name)
+                "Error - " + msg + f" {e} - could not find "+class_name)
             return False
             # raise
         return True
@@ -184,11 +180,9 @@ class SemanticScholarScrapper(object):
                 (By.CLASS_NAME, class_name))
             WebDriverWait(self._web_driver, self._timeout).until(
                 element_present)
-        except TimeoutException:
-            print("Error - " + msg +
-                  "\nTimeoutException - could not find "+class_name)
+        except Exception as e:
             self.log_file.write(
-                "Error - " + msg + "\nTimeoutException - could not find "+class_name)
+                "Error - " + msg + f" {e} - could not find "+class_name)
             return False
             # raise
         return True
@@ -248,21 +242,21 @@ class SemanticScholarScrapper(object):
         try:
             self._web_driver.find_element(
                 By.XPATH, str("//span[text()='"+alertText+"']"))
-        except NoSuchElementException:
+        except Exception as e:
             alertText = 'Create Alert'
             try:
                 self._web_driver.find_element(
                     By.XPATH, str("//span[text()='"+alertText+"']"))
-            except NoSuchElementException:
+            except Exception as e:
                 if (disableAlert):
-                    print("Unable to add alert")
+                    self.log_file.write(f"Unable to add alert exceptions {e}")
                     return False
 
         try:
             self._web_driver.find_element(By.XPATH, str(
                 "//span[text()='"+alertText+"']")).click()
         except Exception as e:
-            print(f"Unable to click on alert text...: {e}")
+            self.log_file.write(f"Unable to click on alert text...: {e}")
             return False
         return True
 
@@ -284,12 +278,13 @@ class SemanticScholarScrapper(object):
         try:
             element = self._web_driver.find_element(
                 By.XPATH, "//span[text()='Save to Library']")
-        except NoSuchElementException:
+        except Exception as e:
             if (inLibrary):
-                print("Could not find the library button")
+                self.log_file.write(
+                    f"Could not find the library button, raise exception {e}")
                 return False
 
-        # Use JavaScript to click the element, avoiding potential 
+        # Use JavaScript to click the element, avoiding potential
         # ElementClickInterceptedException error
         self._web_driver.execute_script("arguments[0].click();", element)
 

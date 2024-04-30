@@ -134,21 +134,29 @@ class MainGUI(object):
 
     def _sendDataToSemanticscholar(self):
         self.lblLoading.config(text="Connection to semanticScholar.com...")
+        self.writeInLog("Connection to semanticScholar.com...")
 
         self.email = self.entryEmail.get()
         self.passwd = self.entryPasswd.get()
         if (self.email == '' or self.passwd == ''):
             self.lblLoading.config(text="Please sign-in above")
             messagebox.showerror('Error', 'Please fill the login field above')
+            self.writeInLog("Error - Please fill the login field above")
             return
         if (self.hasFile == False):
             messagebox.showerror(
                 'Error', 'Please select a csv file containing your zotero librairies')
+            self.writeInLog(
+                "Error - Please select a csv file containing your zotero librairies")
             return
         messagebox.showinfo(
             'Info', 'The application may not responding during scrapping.\n Go make yourself a coffee, it may take a few minutes.')
+        self.writeInLog(
+            "The application may not responding during scrapping. Go make yourself a coffee, it may take a few minutes.")
         scrapper = SemanticScholarScrapper(self.logFile, self.path)
         self.lblLoading.config(text="Login in progress...")
+        self.writeInLog(
+            "Login in progress...")
         isConnected = scrapper.connect_to_account(self.email, self.passwd)
         if (scrapper.is_connected):
             self.writeInLog("Is connected.")
@@ -158,13 +166,20 @@ class MainGUI(object):
                 text="Unable to connect to SemanticScholar !")
             messagebox.showerror(
                 'Error', 'Unable to connect to SemanticScholar !\nPlease check you login information or you connection and try again.')
+            self.writeInLog(
+                "Error - Unable to connect to SemanticScholar !\nPlease check you login information or you connection and try again.")
             return
         Alert = ""
+        self.data.reset_index(drop=True, inplace=True)
+        total_items = len(self.data)
         for index, row in self.data.iterrows():
+            current_item = index + 1
             if ((self.saveFileDataFrame['Key'] == row['Key']).any()):
-                print("skip : " + str(row['Title']))
+                self.writeInLog(
+                    "skip : " + str(row['Title']) + " (Item " + str(current_item) + "/" + str(total_items) + ")\n")
                 continue
-            print("searching " + str(row['Title']))
+            self.writeInLog(
+                "Searching " + str(row['Title']) + " (Item " + str(current_item) + "/" + str(total_items) + ")\n")
             hasAddPaper = scrapper.scrap_paper_by_title(
                 row['Title'], False)
             if (hasAddPaper == False):
@@ -192,7 +207,7 @@ class MainGUI(object):
                 "add " + row['Title'] + " to save file. " + self.saveFileName + " \n")
 
         self.lblLoading.config(text="Finish sending data.")
-
+        self.writeInLog("Finish sending data.")
         if (Alert != ''):
             messagebox.showerror('Scrapping is over', Alert)
 
@@ -201,8 +216,6 @@ class MainGUI(object):
             print("write id")
             self.logFile.write("id : " + self.email + "\n")
             self.hasWriteIdInLog = True
-        else:
-            print("content is not null")
         print("\n")
         print(msg)
         self.logFile.write(msg)
