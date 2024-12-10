@@ -107,6 +107,16 @@ class SemanticScholarScrapper(object):
             'dropdown-filters__result-count')
 
         if (hasFind == False):
+            try:
+                error_message = self._web_driver.find_element(
+                    By.CSS_SELECTOR, '.error-message__code')
+                print(
+                    "Could not find paper. Semantic Scholar returned error code: ",
+                    error_message.text)
+            except NoSuchElementException:
+                print(
+                    "Could not find papers. No specific error message was returned."
+                )
             return False
 
         papers_div = self._web_driver.find_element(By.CLASS_NAME,
