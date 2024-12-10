@@ -6,6 +6,7 @@ from tkinter import filedialog as fd
 from tkinter import messagebox
 from SemanticScholarScrapper import *
 import os
+import threading
 
 
 class MainGUI(object):
@@ -159,11 +160,20 @@ class MainGUI(object):
 
         messagebox.showinfo(
             'Info',
-            'The application may not responding during scrapping.\n Go make yourself a coffee, it may take a few minutes.'
+            'The application may not respond during scrapping.\nGo make yourself a coffee; it may take a few minutes.'
         )
         self.writeInLog(
-            "The application may not responding during scrapping. Go make yourself a coffee, it may take a few minutes."
+            "The application may not respond during scrapping. Go make yourself a coffee; it may take a few minutes."
         )
+
+        # Start scrapping in a separate thread
+        scrapping_thread = threading.Thread(target=self._scrap_data)
+        scrapping_thread.start()
+
+    def _scrap_data(self):
+        """
+        Perform the scrapping logic in a separate thread.
+        """
         scrapper = SemanticScholarScrapper(self.logFile, self.path)
         self.lblLoading.config(text="Logging in...")
         self.writeInLog("Logging in...")
