@@ -137,24 +137,26 @@ class MainGUI(object):
         # for index, row in self.saveFileDataFrame.iterrows():
 
     def _sendDataToSemanticscholar(self):
-        self.lblLoading.config(text="Connection to semanticScholar.com...")
-        self.writeInLog("Connection to semanticScholar.com...")
+        self.lblLoading.config(text="Connecting to SemanticScholar.com...")
+        self.writeInLog("Connecting to SemanticScholar.com...")
 
         self.email = self.entryEmail.get()
         self.passwd = self.entryPasswd.get()
-        if (self.email == '' or self.passwd == ''):
-            self.lblLoading.config(text="Please sign-in above")
+        if not self.email or not self.passwd:
+            self.lblLoading.config(text="Please sign in above")
             messagebox.showerror('Error', 'Please fill the login field above')
             self.writeInLog("Error - Please fill the login field above")
             return
-        if (self.hasFile == False):
+
+        if not self.hasFile:
             messagebox.showerror(
                 'Error',
-                'Please select a csv file containing your zotero librairies')
+                'Please select a csv file containing your Zotero libraries')
             self.writeInLog(
-                "Error - Please select a csv file containing your zotero librairies"
+                "Error - Please select a csv file containing your Zotero libraries"
             )
             return
+
         messagebox.showinfo(
             'Info',
             'The application may not responding during scrapping.\n Go make yourself a coffee, it may take a few minutes.'
@@ -163,63 +165,72 @@ class MainGUI(object):
             "The application may not responding during scrapping. Go make yourself a coffee, it may take a few minutes."
         )
         scrapper = SemanticScholarScrapper(self.logFile, self.path)
-        self.lblLoading.config(text="Login in progress...")
-        self.writeInLog("Login in progress...")
+        self.lblLoading.config(text="Logging in...")
+        self.writeInLog("Logging in...")
         isConnected = scrapper.connect_to_account(self.email, self.passwd)
-        if (scrapper.is_connected):
-            self.writeInLog("Is connected.")
-            self.lblLoading.config(text="Sending data to semanticScholar...")
+
+        if scrapper.is_connected:
+            self.writeInLog("Connected.")
+            self.lblLoading.config(text="Sending data to SemanticScholar...")
         else:
             self.lblLoading.config(
-                text="Unable to connect to SemanticScholar !")
+                text="Unable to connect to SemanticScholar!")
             messagebox.showerror(
                 'Error',
-                'Unable to connect to SemanticScholar !\nPlease check you login information or you connection and try again.'
+                'Unable to connect to SemanticScholar!\nPlease check your login information or connection and try again.'
             )
             self.writeInLog(
-                "Error - Unable to connect to SemanticScholar !\nPlease check you login information or you connection and try again."
+                "Error - Unable to connect to SemanticScholar!\nPlease check your login information or connection and try again."
             )
             return
+
         Alert = ""
         self.data.reset_index(drop=True, inplace=True)
         total_items = len(self.data)
         for index, row in self.data.iterrows():
             current_item = index + 1
-            if ((self.saveFileDataFrame['Key'] == row['Key']).any()):
-                self.writeInLog("skip : " + str(row['Title']) + " (Item " +
-                                str(current_item) + "/" + str(total_items) +
-                                ")\n")
+            if (self.saveFileDataFrame['Key'] == row['Key']).any():
+                self.writeInLog(
+                    f"Skip: {row['Title']} (Item {current_item}/{total_items})\n"
+                )
                 continue
-            self.writeInLog("Searching " + str(row['Title']) + " (Item " +
-                            str(current_item) + "/" + str(total_items) + ")\n")
+
+            self.writeInLog(
+                f"Searching {row['Title']} (Item {current_item}/{total_items})\n"
+            )
             hasAddPaper = scrapper.scrap_paper_by_title(row['Title'], False)
-            if (hasAddPaper == False):
-                msg = "Could not add " + str(row['Title']) + "\n"
+            if not hasAddPaper:
+                msg = f"Could not add {row['Title']} there was an error when searching on semantic scholar\n"
                 self.writeInLog(msg)
                 Alert += msg
                 continue
+
             addAlert = scrapper.alert()
             saveToLibrary = scrapper.save_to_library()
-            if (addAlert == False and saveToLibrary == False):
-                msg = "Could not add alert on " + row['Title'] + "\n"
+            if not addAlert and not saveToLibrary:
+                msg = f"Could not add alert for {row['Title']}\n"
                 self.writeInLog(msg)
                 Alert += msg
                 continue
-            if (addAlert == False):
-                self.writeInLog("Could not add alert on " + row['Title'] +
-                                ", but add it to library.\n")
-            if (saveToLibrary == False):
-                self.writeInLog("Could not save " + row['Title'] +
-                                "in library, but add it to alert.\n")
-            title = row['Title'].replace(',', '')
-            self.saveFile.write("\"" + row['Key'] + "\", \"" + title + "\"\n")
-            self.writeInLog("add " + row['Title'] + " to save file. " +
-                            self.saveFileName + " \n")
 
-        self.lblLoading.config(text="Finish sending data.")
-        self.writeInLog("Finish sending data.")
-        if (Alert != ''):
-            messagebox.showerror('Scrapping is over', Alert)
+            if not addAlert:
+                self.writeInLog(
+                    f"Could not add alert for {row['Title']}, but added it to library.\n"
+                )
+            if not saveToLibrary:
+                self.writeInLog(
+                    f"Could not save {row['Title']} in library, but added it to alert.\n"
+                )
+
+            title = row['Title'].replace(',', '')
+            self.saveFile.write(f"\"{row['Key']}\", \"{title}\"\n")
+            self.writeInLog(
+                f"Added {row['Title']} to save file: {self.saveFileName}\n")
+
+        self.lblLoading.config(text="Finished sending data.")
+        self.writeInLog("Finished sending data.")
+        if Alert:
+            messagebox.showerror('Scraping complete', Alert)
 
     def writeInLog(self, msg):
         if os.stat(self.logFileName
