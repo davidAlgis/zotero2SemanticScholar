@@ -25,9 +25,15 @@ class SemanticScholarScrapper(object):
     """
     A Web Scrapper for Semantic Scholar.
     """
+
     # _web_driver = webdriver.Firefox()
 
-    def __init__(self, log_file, path, timeout=15, time_between_api_call=0.3, headless=True,
+    def __init__(self,
+                 log_file,
+                 path,
+                 timeout=15,
+                 time_between_api_call=0.3,
+                 headless=True,
                  site_url='https://www.semanticscholar.org/',
                  site_sign_in_url='https://www.semanticscholar.org/sign-in'):
         """
@@ -62,8 +68,8 @@ class SemanticScholarScrapper(object):
 
         for paper_name in tqdm.tqdm(paper_title_list):
             try:
-                paper_dict = self.scrap_paper_by_title(
-                    str(paper_name), call_browser=False)
+                paper_dict = self.scrap_paper_by_title(str(paper_name),
+                                                       call_browser=False)
                 paper_id = paper_dict['paperId']
                 papers_dict[paper_id] = paper_dict
             except KeyError:
@@ -73,7 +79,9 @@ class SemanticScholarScrapper(object):
 
         return papers_dict
 
-    def scrap_paper_by_title(self, paper_title: str, call_browser=True) -> bool:
+    def scrap_paper_by_title(self,
+                             paper_title: str,
+                             call_browser=True) -> bool:
         """
         Given a paper title, this method retrieves its associated data from semantic scholar.
 
@@ -103,8 +111,8 @@ class SemanticScholarScrapper(object):
 
         papers_div = self._web_driver.find_element(By.CLASS_NAME,
                                                    'result-page')
-        first_paper_link = papers_div.find_element(
-            By.CLASS_NAME, 'cl-paper-title')
+        first_paper_link = papers_div.find_element(By.CLASS_NAME,
+                                                   'cl-paper-title')
 
         first_paper_link.click()
         return True
@@ -124,8 +132,10 @@ class SemanticScholarScrapper(object):
             By.CSS_SELECTOR, 'h1[data-test-id="paper-detail-title"]')
         title = h1.text
         if not 0 <= distance.levenshtein(str(paper_title), title) <= 10:
-            self.log_file.write(str(paper_title) + " seems to not corresponds to the first title " +
-                                title + " that has been found on semantic scholar")
+            self.log_file.write(
+                str(paper_title) +
+                " seems to not corresponds to the first title " + title +
+                " that has been found on semantic scholar")
             return False
         return True
 
@@ -133,8 +143,9 @@ class SemanticScholarScrapper(object):
         """
         Go to the search page for 'paper_name'.
         """
-        self._web_driver.get(str(
-            "https://www.semanticscholar.org/search?q=" + str(paper_title) + "&sort=relevance"))
+        self._web_driver.get(
+            str("https://www.semanticscholar.org/search?q=" +
+                str(paper_title) + "&sort=relevance"))
 
     def _wait_element_by_tag_name(self, tag_name, msg="") -> bool:
         """
@@ -144,11 +155,11 @@ class SemanticScholarScrapper(object):
         try:
             element_present = expected_conditions.presence_of_element_located(
                 (By.TAG_NAME, tag_name))
-            WebDriverWait(self._web_driver, self._timeout).until(
-                element_present)
+            WebDriverWait(self._web_driver,
+                          self._timeout).until(element_present)
         except Exception as e:
-            self.log_file.write(
-                "Error - " + msg + f" {e} - could not find "+class_name)
+            self.log_file.write("Error - " + msg + f" {e} - could not find " +
+                                class_name)
             return False
             # raise
         return True
@@ -161,11 +172,11 @@ class SemanticScholarScrapper(object):
         try:
             element_present = expected_conditions.presence_of_element_located(
                 (By.NAME, name))
-            WebDriverWait(self._web_driver, self._timeout).until(
-                element_present)
+            WebDriverWait(self._web_driver,
+                          self._timeout).until(element_present)
         except Exception as e:
-            self.log_file.write(
-                "Error - " + msg + f" {e} - could not find "+class_name)
+            self.log_file.write("Error - " + msg + f" {e} - could not find " +
+                                class_name)
             return False
             # raise
         return True
@@ -178,11 +189,11 @@ class SemanticScholarScrapper(object):
         try:
             element_present = expected_conditions.presence_of_element_located(
                 (By.CLASS_NAME, class_name))
-            WebDriverWait(self._web_driver, self._timeout).until(
-                element_present)
+            WebDriverWait(self._web_driver,
+                          self._timeout).until(element_present)
         except Exception as e:
-            self.log_file.write(
-                "Error - " + msg + f" {e} - could not find "+class_name)
+            self.log_file.write("Error - " + msg + f" {e} - could not find " +
+                                class_name)
             return False
             # raise
         return True
@@ -215,8 +226,8 @@ class SemanticScholarScrapper(object):
             By.XPATH, "//span[text()='Sign In']")
         login_button.click()
 
-        hasFind = self._wait_element_by_class_name(
-            "search-input__label", "Unable to sign-in.")
+        hasFind = self._wait_element_by_class_name("search-input__label",
+                                                   "Unable to sign-in.")
         if (hasFind == False):
             return False
 
@@ -230,8 +241,8 @@ class SemanticScholarScrapper(object):
         """
         disableAlert = False
         try:
-            self._web_driver.find_element(
-                By.XPATH, "//span[text()='Disable Alert']")
+            self._web_driver.find_element(By.XPATH,
+                                          "//span[text()='Disable Alert']")
         except NoSuchElementException:
             disableAlert = True
 
@@ -241,20 +252,20 @@ class SemanticScholarScrapper(object):
         alertText = 'Activate Alert'
         try:
             self._web_driver.find_element(
-                By.XPATH, str("//span[text()='"+alertText+"']"))
+                By.XPATH, str("//span[text()='" + alertText + "']"))
         except Exception as e:
             alertText = 'Create Alert'
             try:
                 self._web_driver.find_element(
-                    By.XPATH, str("//span[text()='"+alertText+"']"))
+                    By.XPATH, str("//span[text()='" + alertText + "']"))
             except Exception as e:
                 if (disableAlert):
                     self.log_file.write(f"Unable to add alert exceptions {e}")
                     return False
 
         try:
-            self._web_driver.find_element(By.XPATH, str(
-                "//span[text()='"+alertText+"']")).click()
+            self._web_driver.find_element(
+                By.XPATH, str("//span[text()='" + alertText + "']")).click()
         except Exception as e:
             self.log_file.write(f"Unable to click on alert text...: {e}")
             return False
@@ -267,8 +278,8 @@ class SemanticScholarScrapper(object):
         """
         inLibrary = False
         try:
-            self._web_driver.find_element(
-                By.XPATH, "//span[text()='In Library']")
+            self._web_driver.find_element(By.XPATH,
+                                          "//span[text()='In Library']")
         except NoSuchElementException:
             inLibrary = True
 
@@ -296,7 +307,7 @@ class SemanticScholarScrapper(object):
         options.add_argument("-headless")  # Here
         if os.name == 'nt':
             driverService = Service(self._path + "//driver//geckodriver.exe")
-            self._web_driver = webdriver.Firefox(
-                service=driverService, options=options)
+            self._web_driver = webdriver.Firefox(service=driverService,
+                                                 options=options)
         else:
             self._web_driver = webdriver.Firefox(options=options)
