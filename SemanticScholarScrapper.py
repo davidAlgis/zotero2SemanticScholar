@@ -128,7 +128,7 @@ class SemanticScholarScrapper(object):
             # Check for error message
             try:
                 error_message = self._driver.find_element(
-                    By.CSS_SELECTOR, '.error-message__main-text')
+                    By.CSS_SELECTOR, '#main-content > p.error-message__code')
                 print(
                     "Could not find papers. Semantic Scholar returned an error message:",
                     error_message.text)
