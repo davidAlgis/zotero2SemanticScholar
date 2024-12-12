@@ -347,15 +347,15 @@ class SemanticScholarScrapper(object):
 
     def _start_browser(self):
         """
-        Initialize the SeleniumBase driver with desired options for Firefox.
+        Initialize the SeleniumBase driver with Undetected-Chromedriver for stealth.
         """
         if not self._driver:
-            options = {"headless": self._headless}
             try:
-                # Initialize the SeleniumBase driver
-                self._driver = Driver(browser="firefox", **options)
+                # Initialize the SeleniumBase driver with UC mode enabled
+                self._driver = Driver(
+                    uc=True)  # Enable Undetected-Chromedriver (UC)
 
-                # Set the custom user-agent via JavaScript execution
+                # Set a custom user-agent for stealth purposes
                 custom_user_agent = (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -363,6 +363,11 @@ class SemanticScholarScrapper(object):
                 self._driver.execute_script(
                     f"Object.defineProperty(navigator, 'userAgent', {{get: () => '{custom_user_agent}'}});"
                 )
+
+                # Enable a custom reconnect time to simulate human behavior
+                reconnect_time = 3  # Adjust based on needs
+                self._driver.uc_open_with_reconnect(self._site_url,
+                                                    reconnect_time)
 
                 # Set page load timeout
                 self._driver.set_page_load_timeout(self._timeout)
