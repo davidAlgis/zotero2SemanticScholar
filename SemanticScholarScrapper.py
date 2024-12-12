@@ -103,8 +103,8 @@ class SemanticScholarScrapper(object):
                 "span.cl-button__label")
 
             # Wait for the popup to appear
-            if self._wait_element_by_css_selector(popup_selector,
-                                                  "Waiting for alert popup"):
+            if self._driver._wait_element_by_css_selector(
+                    popup_selector, "Waiting for alert popup"):
                 # Locate and click the cancel button
                 cancel_button = self._driver.find_element(
                     By.CSS_SELECTOR, cancel_button_selector)
