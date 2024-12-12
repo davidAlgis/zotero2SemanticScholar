@@ -131,7 +131,9 @@ class SemanticScholarScrapper(object):
                     By.CSS_SELECTOR, '#main-content > p.error-message__code')
                 print(
                     "Could not find papers. Semantic Scholar returned an error message:",
-                    error_message.text)
+                    error_message.text,
+                    ". You might need to increase the wait time between each paper search, see the readme.md."
+                )
                 self.log_file.write("Error Message: " + error_message.text +
                                     "\n")
             except NoSuchElementException:

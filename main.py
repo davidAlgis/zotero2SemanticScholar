@@ -14,7 +14,7 @@ import time
 
 class MainGUI(object):
 
-    def __init__(self):
+    def __init__(self, wait_time=37):
 
         self.path, filename = os.path.split(os.path.realpath(__file__))
         self.root = tk.Tk()
@@ -22,6 +22,7 @@ class MainGUI(object):
         self.root.geometry('350x300')
         self.root.protocol("WM_DELETE_WINDOW", self.onClosing)
         # Email entry:
+        self.wait_time = wait_time
         self.lblInfo = ttk.Label(self.root,
                                  text='Sign in to Semantic Scholar:')
         self.lblEmail = ttk.Label(self.root, text='Email:')
@@ -249,7 +250,7 @@ class MainGUI(object):
                     f"Added '{title}' to save file: {self.saveFileName}\n")
 
                 # Respect time between API calls
-                time.sleep(0.3)
+                time.sleep(self.wait_time)
 
             self.lblLoading.config(text="Finished sending data.")
             self.writeInLog("Finished sending data.\n")
@@ -349,6 +350,7 @@ class MainGUI(object):
 
                 print(f"Added '{title}' successfully.")
                 self.logFile.write(f"Added {title} successfully.\n")
+                time.sleep(self.wait_time)
 
             print("Scraping completed.")
             self.logFile.write("Scraping completed.\n")
@@ -377,6 +379,12 @@ if __name__ == "__main__":
                         "--input_bibliography",
                         type=str,
                         help="Path to the input bibliography CSV file.")
+    parser.add_argument(
+        "-w",
+        "--wait_time",
+        type=int,
+        default=37,
+        help="Time to wait between API calls (default: 37 seconds).")
     args = parser.parse_args()
 
     if args.login and args.password and args.input_bibliography:
@@ -385,7 +393,7 @@ if __name__ == "__main__":
         log_file_name = os.path.join(path, "log.txt")
         save_file_name = os.path.join(path, "saveDataSC.csv")
 
-        main = MainGUI()
+        main = MainGUI(wait_time=args.wait_time)
         main.path = path
         main.logFileName = log_file_name
         main.saveFileName = save_file_name
