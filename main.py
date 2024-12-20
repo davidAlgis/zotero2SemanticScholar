@@ -250,7 +250,7 @@ class MainGUI(object):
                     f"Added '{title}' to save file: {self.saveFileName}\n")
 
                 # Respect time between API calls
-                time.sleep(self.wait_time)
+                # time.sleep(self.wait_time)
 
             self.lblLoading.config(text="Finished sending data.")
             self.writeInLog("Finished sending data.\n")
