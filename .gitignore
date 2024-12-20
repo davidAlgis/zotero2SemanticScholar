@@ -1,5 +1,6 @@
 log.txt
 saveDataSC.csv
 these.csv
-
+downloaded_files
 __pycache__
+env
