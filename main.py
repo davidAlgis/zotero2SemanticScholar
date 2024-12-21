@@ -293,7 +293,7 @@ class MainGUI(object):
                 )
                 has_add_paper = scrapper.scrap_paper_by_title(title, False)
                 if not has_add_paper:
-                    msg = f"Could not add '{title}'. There was an error searching on Semantic Scholar.\n"
+                    msg = f"Could not add '{title}'. It has not been found or there was some error with SemanticScholar.\n"
                     self.writeInLog(msg)
                     Alert += msg
                     processed_items += 1
