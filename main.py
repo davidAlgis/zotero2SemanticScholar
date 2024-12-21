@@ -487,6 +487,7 @@ class MainGUI(object):
 
                 # Save to saveDataSC.csv
                 sanitized_title = title.replace('"', '""')  # Escape quotes
+                sanitized_title = sanitized_title.replace(',', ' ')
                 self.saveFile.write(
                     f"\"{row['Key']}\", \"{sanitized_title}\"\n")
                 self.saveFile.flush()  # Ensure data is written immediately
