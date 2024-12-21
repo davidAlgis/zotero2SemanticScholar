@@ -11,10 +11,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 
 # Dependencies to be included
 build_exe_options = {
-    "packages": [
-        "os", "seleniumbase", "undetected_chromedriver", "distance",
-        "Levenshtein"
-    ],
+    "packages": ["os", "seleniumbase", "distance", "Levenshtein"],
     "include_files": ["SemanticScholarScrapper.py", "requirements.txt"],
     "excludes": ["tkinter.test"],
 }

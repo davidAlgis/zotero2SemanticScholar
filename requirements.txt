@@ -1,5 +1,4 @@
 seleniumbase
-undetected-chromedriver
 distance
 python-Levenshtein
 cx_freeze
