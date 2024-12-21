@@ -19,7 +19,7 @@ class SemanticScholarScrapper(object):
                  path,
                  timeout=15,
                  time_between_api_call=0.3,
-                 headless=False,
+                 headless=True,
                  site_url='https://www.semanticscholar.org/',
                  site_sign_in_url='https://www.semanticscholar.org/sign-in',
                  email=None,
