@@ -1,4 +1,3 @@
-pandas
 seleniumbase
 undetected-chromedriver
 distance

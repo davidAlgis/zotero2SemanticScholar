@@ -12,7 +12,7 @@ with open("requirements.txt", "r", encoding="utf-8") as fh:
 # Dependencies to be included
 build_exe_options = {
     "packages": [
-        "os", "pandas", "seleniumbase", "undetected_chromedriver", "distance",
+        "os", "seleniumbase", "undetected_chromedriver", "distance",
         "Levenshtein"
     ],
     "include_files": ["SemanticScholarScrapper.py", "requirements.txt"],

@@ -11,7 +11,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
 from tkinter import messagebox
-import pandas as pd
+
 from SemanticScholarScrapper import SemanticScholarScrapper
 
 
@@ -71,16 +71,21 @@ class MainGUI(object):
                                           text='Estimated time remaining: 0s')
 
         self.fileName = ""
-        self.data = pd.DataFrame()
+        # We'll store CSV rows in a list of dictionaries (instead of using pandas)
+        self.data = []
         self.email = ""
         self.passwd = ""
         self.hasFile = False
         self._pack()
+
+        # We will store "Key" values that have already been saved in a set
+        # to replicate the "has it already been saved?" logic from pandas
         self.saveFileName = os.path.join(self.path, "saveDataSC.csv")
         self.saveFile = None
         self.logFileName = os.path.join(self.path, "log.txt")
-        self.saveFileDataFrame = pd.DataFrame()
+        self.savedKeys = set()
         self._initSaveData()
+
         self.logFile = open(self.logFileName,
                             "a",
                             encoding="utf-8",
@@ -94,22 +99,36 @@ class MainGUI(object):
                 "Found bibliography.csv. It will be used by default if no other file is selected."
             )
             self.fileName = "bibliography.csv"
-            self._csvToDataFrame()
+            self._csvToDataList()
 
         # Start the queue processing
         self.root.after(100, self._process_queue)
 
     def _initSaveData(self):
-        if not os.path.exists(self.saveFileName):
-            with open(self.saveFileName, "a", encoding="utf-8",
+        """
+        Initialize the 'saveDataSC.csv' file and read existing saved keys into a set.
+        """
+        file_exists = os.path.exists(self.saveFileName)
+
+        if not file_exists:
+            # Create the file with a header
+            with open(self.saveFileName, "w", encoding="utf-8",
                       newline='') as f:
                 writer = csv.writer(f, quoting=csv.QUOTE_ALL)
                 writer.writerow(["Key", "Title"])
-            self.saveFileDataFrame = pd.read_csv(self.saveFileName)
         else:
-            self.saveFileDataFrame = pd.read_csv(self.saveFileName)
+            # Read existing keys from saveFileName into a set
+            with open(self.saveFileName,
+                      "r",
+                      encoding="utf-8",
+                      errors='ignore') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    # Collect the keys that have already been saved
+                    if 'Key' in row and row['Key']:
+                        self.savedKeys.add(row['Key'])
 
-        # Open in append mode with csv.writer
+        # Open in append mode so we can write new entries later
         self.saveFile = open(self.saveFileName,
                              "a",
                              encoding="utf-8",
@@ -118,7 +137,6 @@ class MainGUI(object):
         self.saveWriter = csv.writer(self.saveFile, quoting=csv.QUOTE_ALL)
 
     def onClosing(self):
-        # if messagebox.askokcancel("Quit", "Do you want to quit?"):
         self.root.destroy()
         if self.saveFile:
             self.saveFile.close()
@@ -150,27 +168,40 @@ class MainGUI(object):
                                            initialdir=os.path.expanduser("~"),
                                            filetypes=filetypes)
         if self.fileName:
-            self._csvToDataFrame()
+            self._csvToDataList()
 
-    def _csvToDataFrame(self):
+    def _csvToDataList(self):
+        """
+        Read the selected CSV into a list of dictionaries, filter relevant types, and set flags.
+        """
         self.lblLoading.config(text="Reading library...")
         try:
-            self.data = pd.read_csv(self.fileName)
+            with open(self.fileName, 'r', encoding="utf-8",
+                      errors='ignore') as f:
+                reader = csv.DictReader(f)
+                # Convert to a list of dicts
+                data_list = list(reader)
+
         except Exception as e:
             messagebox.showerror('Error', f'Failed to read CSV file: {e}')
             self.writeInLog(f"Error reading CSV file: {e}\n")
             return
 
-        # Initialize columns for alerts and library additions
-        self.data.insert(0, 'Add Alert', True)
-        self.data.insert(0, 'Add to Library', True)
+        # Add default columns to each row
+        for row in data_list:
+            row['Add Alert'] = True
+            row['Add to Library'] = True
 
         # Filter relevant item types
         relevant_types = [
             'journalArticle', 'conferencePaper', 'bookSection', 'preprint',
             'thesis', 'book'
         ]
-        self.data = self.data[self.data['Item Type'].isin(relevant_types)]
+        filtered_data_list = [
+            row for row in data_list if row.get('Item Type') in relevant_types
+        ]
+
+        self.data = filtered_data_list
         self.hasFile = True
         self.lblLoading.config(text="Library loaded successfully.")
         self.writeInLog("Library loaded successfully.\n")
@@ -213,12 +244,11 @@ class MainGUI(object):
         Perform the scraping logic in a separate thread.
         """
         try:
-
-            self.data.reset_index(drop=True, inplace=True)
             total_items = len(self.data)
             start_time = time.time()
             processed_items = 0
             self._update_progress(processed_items, total_items, start_time)
+
             scrapper = SemanticScholarScrapper(self.logFile,
                                                self.path,
                                                email=self.email,
@@ -226,8 +256,8 @@ class MainGUI(object):
             self.queue.put(("status", "Logging in..."))
             self.writeInLog("Logging in...\n")
             start_time = time.time()
-            is_connected = scrapper.connect_to_account(self.email, self.passwd)
 
+            is_connected = scrapper.connect_to_account(self.email, self.passwd)
             if is_connected:
                 self.writeInLog("Connected to SemanticScholar.\n")
                 self.queue.put(
@@ -243,11 +273,13 @@ class MainGUI(object):
 
             Alert = ""
 
-            for index, row in self.data.iterrows():
+            for index, row in enumerate(self.data):
                 current_item = index + 1
-                title = row['Title']
+                title = row.get('Title', '')
 
-                if (self.saveFileDataFrame['Key'] == row['Key']).any():
+                # Skip if the 'Key' is already in the saved set
+                row_key = row.get('Key', '')
+                if row_key in self.savedKeys:
                     self.writeInLog(
                         f"Skip: {title} (Item {current_item}/{total_items}), because it has already been saved.\n"
                     )
@@ -268,6 +300,8 @@ class MainGUI(object):
                     self._update_progress(processed_items, total_items,
                                           start_time)
                     continue
+
+                # Attempt to add alert and library
                 scrapper.cancel_create_paper_alert()
                 add_alert = scrapper.alert()
                 save_to_library = scrapper.save_to_library()
@@ -291,11 +325,14 @@ class MainGUI(object):
                     )
 
                 # Save to saveDataSC.csv
-                sanitized_title = title.replace('"', '""')  # Escape quotes
-                sanitized_title = sanitized_title.replace(',', ' ')
+                # We also keep track of the 'Key' so we won't add it again
+                sanitized_key = row_key.replace('"', '""')
+                sanitized_title = title.replace('"', '""').replace(',', ' ')
                 self.saveFile.write(
-                    f"\"{row['Key']}\", \"{sanitized_title}\"\n")
+                    f"\"{sanitized_key}\", \"{sanitized_title}\"\n")
                 self.saveFile.flush()  # Ensure data is written immediately
+                self.savedKeys.add(row_key)  # Mark this key as saved
+
                 self.writeInLog(
                     f"Added '{title}' to save file: {self.saveFileName}\n")
 
@@ -304,6 +341,7 @@ class MainGUI(object):
 
             self.lblLoading.config(text="Finished sending data.")
             self.writeInLog("Finished sending data.\n")
+
             if Alert:
                 self.queue.put(("error", Alert))
             else:
@@ -337,7 +375,8 @@ class MainGUI(object):
                     self.lblLoading.config(text=item[1])
                 elif item[0] == "progress":
                     processed, total, remaining = item[1], item[2], item[3]
-                    progress_percent = (processed / total) * 100
+                    progress_percent = (processed /
+                                        total) * 100 if total else 0
                     self.progress['value'] = progress_percent
                     self.lblProgress.config(
                         text=f"Progress: {processed}/{total}")
@@ -408,6 +447,7 @@ class MainGUI(object):
     def _scrap_directly(self, email, password, input_bibliography):
         """
         Run the scraping process directly using provided arguments in CLI mode.
+        (Non-GUI usage)
         """
         self.logFile = open(self.logFileName,
                             "a",
@@ -417,6 +457,29 @@ class MainGUI(object):
                                            self.path,
                                            email=email,
                                            password=password)
+
+        # We'll also open saveFile for writing new data in non-GUI mode
+        if not os.path.exists(self.saveFileName):
+            with open(self.saveFileName, "w", encoding="utf-8",
+                      newline='') as f:
+                writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+                writer.writerow(["Key", "Title"])
+        else:
+            # Populate savedKeys
+            with open(self.saveFileName,
+                      "r",
+                      encoding="utf-8",
+                      errors='ignore') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if 'Key' in row and row['Key']:
+                        self.savedKeys.add(row['Key'])
+
+        self.saveFile = open(self.saveFileName,
+                             "a",
+                             encoding="utf-8",
+                             errors='ignore',
+                             newline='')
 
         try:
             self.logFile.write("Logging in...\n")
@@ -436,13 +499,20 @@ class MainGUI(object):
                     f"Error: The file '{input_bibliography}' does not exist.")
                 return
 
-            data = pd.read_csv(input_bibliography)
-            if data.empty:
+            # Read the CSV in non-GUI mode
+            with open(input_bibliography,
+                      'r',
+                      encoding='utf-8',
+                      errors='ignore') as f:
+                reader = csv.DictReader(f)
+                data = list(reader)
+
+            if len(data) == 0:
                 print(f"Error: The file '{input_bibliography}' is empty.")
                 return
 
-            # Add default columns if they do not exist
-            if 'Title' not in data.columns:
+            # Check if 'Title' column exists
+            if len(data) > 0 and 'Title' not in data[0]:
                 print("Error: The input file must contain a 'Title' column.")
                 return
 
@@ -450,10 +520,24 @@ class MainGUI(object):
             processed_items = 0
             start_time = time.time()
 
-            for index, row in data.iterrows():
-                title = row['Title']
+            for index, row in enumerate(data):
+                title = row.get('Title', '')
+                row_key = row.get('Key', '')
+
                 print(f"Processing {index + 1}/{total_items}: {title}")
                 self.logFile.write(f"Searching {title}...\n")
+
+                if row_key in self.savedKeys:
+                    print(
+                        f"Skipping '{title}' because it has already been saved."
+                    )
+                    self.logFile.write(
+                        f"Skipping '{title}' because it has already been saved.\n"
+                    )
+                    processed_items += 1
+                    self._print_progress(processed_items, total_items,
+                                         start_time)
+                    continue
 
                 # Scrape the paper
                 has_add_paper = scrapper.scrap_paper_by_title(
@@ -493,21 +577,20 @@ class MainGUI(object):
                     self.logFile.write(f"Added '{title}' successfully.\n")
                     print(f"Added '{title}' successfully.")
 
-                # Save to saveDataSC.csv
-                sanitized_title = title.replace('"', '""')  # Escape quotes
-                sanitized_title = sanitized_title.replace(',', ' ')
+                # Write to saveFile
+                sanitized_key = row_key.replace('"', '""')
+                sanitized_title = title.replace('"', '""').replace(',', ' ')
                 self.saveFile.write(
-                    f"\"{row['Key']}\", \"{sanitized_title}\"\n")
-                self.saveFile.flush()  # Ensure data is written immediately
+                    f"\"{sanitized_key}\", \"{sanitized_title}\"\n")
+                self.saveFile.flush()
+                self.savedKeys.add(row_key)
+
                 self.logFile.write(
                     f"Added '{title}' to save file: {self.saveFileName}\n")
                 print(f"Added '{title}' to save file: {self.saveFileName}")
 
                 processed_items += 1
                 self._print_progress(processed_items, total_items, start_time)
-
-                # Respect time between API calls
-                # time.sleep(self.wait_time)
 
             print("Scraping completed.")
             self.logFile.write("Scraping completed.\n")
@@ -519,11 +602,14 @@ class MainGUI(object):
 
         finally:
             scrapper._close_browser()
+            self.saveFile.close()
             self.logFile.close()
 
     def _process_queue(self):
         """
-        Process items in the queue and update the GUI accordingly.
+        Overridden queue processor for the GUI.
+        This method is duplicated at the bottom of the file,
+        so it needs a unique name (or we unify them).
         """
         try:
             while True:
@@ -532,7 +618,8 @@ class MainGUI(object):
                     self.lblLoading.config(text=item[1])
                 elif item[0] == "progress":
                     processed, total, remaining = item[1], item[2], item[3]
-                    progress_percent = (processed / total) * 100
+                    progress_percent = (processed /
+                                        total) * 100 if total else 0
                     self.progress['value'] = progress_percent
                     self.lblProgress.config(
                         text=f"Progress: {processed}/{total}")
@@ -553,7 +640,7 @@ class MainGUI(object):
 
     def _format_time(self, seconds):
         """
-        Format time in seconds to H:M:S.
+        Overridden time formatting for the GUI.
         """
         seconds = int(seconds)
         h = seconds // 3600
@@ -566,39 +653,9 @@ class MainGUI(object):
         else:
             return f"{s}s"
 
-    def writeInLog(self, msg):
-        """
-        Write messages to the log file and print them.
-
-        :param msg: Message to log.
-        """
-        if os.stat(self.logFileName).st_size == 0 and not self.hasWriteIdInLog:
-            self.logFile.write(f"id: {self.email}\n")
-            self.hasWriteIdInLog = True
-        self.logFile.write(msg)
-        print(msg)
-
-    def _autoFillID(self):
-        """
-        Autofill the email field from the log file if available.
-        """
-        if not os.path.isfile(self.logFileName):
-            return
-
-        try:
-            with open(self.logFileName, 'r', encoding="utf-8",
-                      errors='ignore') as logFile:
-                first_line = logFile.readline().strip()
-                if first_line.startswith("id: "):
-                    id_part = first_line[4:]
-                    if id_part:
-                        self.entryEmail.insert(0, id_part)
-        except Exception as e:
-            print(f"Error reading log file for autofill: {e}")
-
     def _print_progress(self, processed, total, start_time):
         """
-        Print the progress and estimated remaining time in CLI mode.
+        Print CLI-mode progress and estimated time.
         """
         elapsed_time = time.time() - start_time
         if processed == 0:
