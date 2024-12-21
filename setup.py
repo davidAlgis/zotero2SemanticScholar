@@ -19,11 +19,6 @@ build_exe_options = {
     "excludes": ["tkinter.test"],
 }
 
-# Add base for Windows GUI applications
-base = None
-if sys.platform == "win32":
-    base = "Win32GUI"
-
 # Main setup configuration
 setup(
     name="Zotero2SemanticScholar",
@@ -45,7 +40,7 @@ setup(
     executables=[
         Executable(
             script="main.py",  # Your main Python file
-            base=base,
+            base=None,
             target_name="Zotero2SemanticScholar.exe",  # Name of the executable
             icon=None,  # Add an icon path here if you have one
         )
