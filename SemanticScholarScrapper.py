@@ -216,6 +216,29 @@ class SemanticScholarScrapper(object):
 
         return self._check_paper_page(str(paper_title))
 
+    def _search_and_open_retry(self) -> bool:
+        """
+        Retry the search and attempt to open the first link after restarting and re-logging in.
+        """
+        try:
+            # Retry the last search with the same title
+            if hasattr(self, '_last_search_title'):
+                self.log_file.write(
+                    f"Retrying search for: {self._last_search_title}\n")
+                print(f"Retrying search for: {self._last_search_title}")
+                self._search_paper_by_name(self._last_search_title)
+                return self._open_first_link_in_search_page(
+                    retry_on_fail=False)
+            else:
+                self.log_file.write(
+                    "No previous search title available to retry.\n")
+                print("No previous search title available to retry.")
+                return False
+        except Exception as e:
+            self.log_file.write(f"Error during search retry: {e}\n")
+            print(f"Error during search retry: {e}")
+            return False
+
     def _search_paper_by_name(self, paper_title) -> None:
         """
         Navigate to the search results page for the given paper title.
@@ -223,6 +246,7 @@ class SemanticScholarScrapper(object):
         :param paper_title: The title of the paper to search for.
         """
         try:
+            self._last_search_title = paper_title  # Save the title for retry purposes
             search_url = f"https://www.semanticscholar.org/search?q={paper_title}&sort=relevance"
             self._driver.get(search_url)
             self._random_sleep(3, 6)
@@ -233,10 +257,10 @@ class SemanticScholarScrapper(object):
                 f"Error during search for {paper_title}: {e}\n")
             print(f"Error during search for {paper_title}: {e}")
 
-    def _open_first_link_in_search_page(self) -> bool:
+    def _open_first_link_in_search_page(self, retry_on_fail=True) -> bool:
         """
         On the search page, navigate to the first paper link.
-        If a semantic error is encountered, restart the browser and re-log in.
+        If a semantic error is encountered, restart the browser and re-log in, then retry the search.
         """
         has_find = self._wait_element_by_class_name(
             'dropdown-filters__result-count', "Waiting for search results.")
@@ -246,25 +270,29 @@ class SemanticScholarScrapper(object):
             try:
                 error_message = self._driver.find_element(
                     By.CSS_SELECTOR, '#main-content > p.error-message__code')
-                print(
-                    "Could not find papers. Semantic Scholar returned an error message:",
-                    error_message.text,
-                    ". You might need to increase the wait time between each paper search, see the readme.md."
-                )
                 self.log_file.write(
-                    "Error Message: " + error_message.text +
-                    ". You might need to increase the wait time between each paper search, see the readme.md.\n"
+                    f"Semantic Scholar error: {error_message.text}. Retrying...\n"
+                )
+                print(
+                    f"Semantic Scholar error: {error_message.text}. Retrying..."
+                )
+            except NoSuchElementException:
+                self.log_file.write(
+                    "Could not find papers. No specific error message was returned. Retrying...\n"
+                )
+                print(
+                    "Could not find papers. No specific error message was returned. Retrying..."
                 )
 
-                # Restart the browser and re-login
-                self._restart_and_relogin()
-            except NoSuchElementException:
-                print(
-                    "Could not find papers. No specific error message was returned."
-                )
-                self.log_file.write(
-                    "Error: Could not find papers. No specific error message was returned.\n"
-                )
+            # Restart the browser and re-login
+            if retry_on_fail:
+                if self._restart_and_relogin():
+                    # Retry the last search
+                    self.log_file.write(
+                        "Retrying last search after re-login...\n")
+                    print("Retrying last search after re-login...")
+                    return self._search_and_open_retry()
+
             return False
 
         try:
@@ -284,17 +312,40 @@ class SemanticScholarScrapper(object):
             self._random_sleep()
             return True
         except NoSuchElementException as e:
-            print("Could not find the first paper link:", str(e))
             self.log_file.write(
-                f"Error: Could not find the first paper link: {e}\n")
+                f"Error: Could not find the first paper link: {e}. Retrying...\n"
+            )
+            print(
+                f"Error: Could not find the first paper link: {e}. Retrying..."
+            )
+
             # Restart the browser and re-login
-            self._restart_and_relogin()
+            if retry_on_fail:
+                if self._restart_and_relogin():
+                    # Retry the last search
+                    self.log_file.write(
+                        "Retrying last search after re-login...\n")
+                    print("Retrying last search after re-login...")
+                    return self._search_and_open_retry()
+
             return False
         except Exception as e:
-            print(f"Unexpected error when clicking the first paper link: {e}")
             self.log_file.write(
-                f"Unexpected error when clicking the first paper link: {e}\n")
-            self._restart_and_relogin()
+                f"Unexpected error when clicking the first paper link: {e}. Retrying...\n"
+            )
+            print(
+                f"Unexpected error when clicking the first paper link: {e}. Retrying..."
+            )
+
+            # Restart the browser and re-login
+            if retry_on_fail:
+                if self._restart_and_relogin():
+                    # Retry the last search
+                    self.log_file.write(
+                        "Retrying last search after re-login...\n")
+                    print("Retrying last search after re-login...")
+                    return self._search_and_open_retry()
+
             return False
 
     def _check_paper_page(self, paper_title) -> bool:
@@ -509,7 +560,7 @@ class SemanticScholarScrapper(object):
 
     def _restart_and_relogin(self):
         """
-        Restart the browser and re-log into the Semantic Scholar account.
+        Restart the browser, re-log into the Semantic Scholar account, and optionally retry the last search.
         """
         try:
             # Close the current browser session
@@ -530,7 +581,10 @@ class SemanticScholarScrapper(object):
                 self.log_file.write(
                     "Re-login failed. Please check credentials.\n")
                 print("Re-login failed. Please check credentials.")
+
+            return is_connected
         except Exception as e:
             self.log_file.write(
                 f"Error during browser restart and re-login: {e}\n")
             print(f"Error during browser restart and re-login: {e}")
+            return False
