@@ -1,22 +1,22 @@
 # main.py
-
-import pandas as pd
-import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog as fd
-from tkinter import messagebox
-from SemanticScholarScrapper import SemanticScholarScrapper
 import os
 import threading
 import argparse
 import csv
 import time
 import queue
+import getpass
+import tkinter as tk
+from tkinter import ttk
+from tkinter import filedialog as fd
+from tkinter import messagebox
+import pandas as pd
+from SemanticScholarScrapper import SemanticScholarScrapper
 
 
 class MainGUI(object):
 
-    def __init__(self, wait_time=37):
+    def __init__(self):
         self.path, filename = os.path.split(os.path.realpath(__file__))
         self.root = tk.Tk()
         self.root.title('Zotero2SemanticScholar')
@@ -27,7 +27,6 @@ class MainGUI(object):
         self.queue = queue.Queue()
 
         # Email entry:
-        self.wait_time = wait_time
         self.lblInfo = ttk.Label(self.root,
                                  text='Sign in to Semantic Scholar:')
         self.lblEmail = ttk.Label(self.root, text='Email:')
@@ -291,7 +290,6 @@ class MainGUI(object):
                     f"Added '{title}' to save file: {self.saveFileName}\n")
 
                 processed_items += 1
-                time.sleep(self.wait_time)
                 self._update_progress(processed_items, total_items, start_time)
 
             self.lblLoading.config(text="Finished sending data.")
@@ -499,7 +497,7 @@ class MainGUI(object):
                 self._print_progress(processed_items, total_items, start_time)
 
                 # Respect time between API calls
-                time.sleep(self.wait_time)
+                # time.sleep(self.wait_time)
 
             print("Scraping completed.")
             self.logFile.write("Scraping completed.\n")
@@ -620,34 +618,27 @@ if __name__ == "__main__":
                         "--login",
                         type=str,
                         help="Your Semantic Scholar login (email).")
-    parser.add_argument("-p",
-                        "--password",
-                        type=str,
-                        help="Your Semantic Scholar password.")
     parser.add_argument("-i",
                         "--input_bibliography",
                         type=str,
                         help="Path to the input bibliography CSV file.")
-    parser.add_argument(
-        "-w",
-        "--wait_time",
-        type=int,
-        default=37,
-        help="Time to wait between API calls (default: 37 seconds).")
     args = parser.parse_args()
 
-    if args.login and args.password and args.input_bibliography:
+    if args.login and args.input_bibliography:
+        # Prompt for the password securely
+        password = getpass.getpass(
+            prompt="Enter your Semantic Scholar password: ")
+
         # Run in non-GUI mode
         path, _ = os.path.split(os.path.realpath(__file__))
         log_file_name = os.path.join(path, "log.txt")
         save_file_name = os.path.join(path, "saveDataSC.csv")
 
-        main = MainGUI(wait_time=args.wait_time)
+        main = MainGUI()
         main.path = path
         main.logFileName = log_file_name
         main.saveFileName = save_file_name
-        main._scrap_directly(args.login, args.password,
-                             args.input_bibliography)
+        main._scrap_directly(args.login, password, args.input_bibliography)
     else:
         # Run GUI mode
         gui = MainGUI()
