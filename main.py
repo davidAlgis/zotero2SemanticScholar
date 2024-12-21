@@ -6,6 +6,7 @@ import csv
 import time
 import queue
 import getpass
+import sys
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog as fd
@@ -14,10 +15,19 @@ import pandas as pd
 from SemanticScholarScrapper import SemanticScholarScrapper
 
 
+def get_base_directory():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    else:
+        # Running normally as a script
+        current_directory = os.path.abspath(os.path.dirname(__file__))
+        return os.path.abspath(os.path.join(current_directory, os.pardir))
+
+
 class MainGUI(object):
 
     def __init__(self):
-        self.path, filename = os.path.split(os.path.realpath(__file__))
+        self.path = get_base_directory()
         self.root = tk.Tk()
         self.root.title('Zotero2SemanticScholar')
         self.root.geometry('400x400')  # Increased height for progress bar
@@ -630,7 +640,7 @@ if __name__ == "__main__":
             prompt="Enter your Semantic Scholar password: ")
 
         # Run in non-GUI mode
-        path, _ = os.path.split(os.path.realpath(__file__))
+        path = get_base_directory()
         log_file_name = os.path.join(path, "log.txt")
         save_file_name = os.path.join(path, "saveDataSC.csv")
 
