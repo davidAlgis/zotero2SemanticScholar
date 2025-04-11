@@ -1,7 +1,7 @@
-# main.py
 import argparse
 import csv
 import getpass
+import hashlib
 import os
 import queue
 import sys
@@ -74,16 +74,14 @@ class MainGUI(object):
         )
 
         self.fileName = ""
-        # We'll store CSV rows in a list of dictionaries (instead of using
-        # pandas)
+        # We'll store CSV rows in a list of dictionaries
         self.data = []
         self.email = ""
         self.passwd = ""
         self.hasFile = False
         self._pack()
 
-        # We will store "Key" values that have already been saved in a set
-        # to replicate the "has it already been saved?" logic from pandas
+        # Save file information
         self.saveFileName = os.path.join(self.path, "saveDataSC.csv")
         self.saveFile = None
         self.logFileName = os.path.join(self.path, "log.txt")
@@ -99,8 +97,7 @@ class MainGUI(object):
 
         if os.path.isfile("bibliography.csv"):
             print(
-                "Found bibliography.csv. It will be used "
-                "by default if no other file is selected."
+                "Found bibliography.csv. It will be used by default if no other file is selected."
             )
             self.fileName = "bibliography.csv"
             self._csvToDataList()
@@ -110,8 +107,7 @@ class MainGUI(object):
 
     def _initSaveData(self):
         """
-        Initialize the 'saveDataSC.csv' file and read
-        existing saved keys into a set.
+        Initialize the 'saveDataSC.csv' file and read existing saved keys into a set.
         """
         file_exists = os.path.exists(self.saveFileName)
 
@@ -129,11 +125,12 @@ class MainGUI(object):
             ) as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    # Collect the keys that have already been saved
-                    if "Key" in row and row["Key"]:
-                        self.savedKeys.add(row["Key"])
+                    # Only add nonempty keys
+                    key_val = row.get("Key", "").strip()
+                    if key_val:
+                        self.savedKeys.add(key_val)
 
-        # Open in append mode so we can write new entries later
+        # Open in append mode to write new entries later
         self.saveFile = open(
             self.saveFileName,
             "a",
@@ -143,12 +140,24 @@ class MainGUI(object):
         )
         self.saveWriter = csv.writer(self.saveFile, quoting=csv.QUOTE_ALL)
 
-    def onClosing(self):
-        self.root.destroy()
-        if self.saveFile:
-            self.saveFile.close()
-        if self.logFile:
-            self.logFile.close()
+    def _autoFillID(self):
+        """
+        Autofill the email field from the log file if available.
+        """
+        if not os.path.isfile(self.logFileName):
+            return
+
+        try:
+            with open(
+                self.logFileName, "r", encoding="utf-8", errors="ignore"
+            ) as logFile:
+                first_line = logFile.readline().strip()
+                if first_line.startswith("id:"):
+                    id_part = first_line[4:]
+                    if id_part:
+                        self.entryEmail.insert(0, id_part)
+        except Exception as e:
+            print(f"Error reading log file for autofill: {e}")
 
     def _pack(self):
         padding_options = {"padx": 10}
@@ -170,7 +179,6 @@ class MainGUI(object):
 
     def _selectFiles(self):
         filetypes = (("CSV files", "*.csv"), ("All files", "*.*"))
-
         self.fileName = fd.askopenfilename(
             title="Open a file",
             initialdir=os.path.expanduser("~"),
@@ -181,8 +189,7 @@ class MainGUI(object):
 
     def _csvToDataList(self):
         """
-        Read the selected CSV into a list of
-        dictionaries, filter relevant types, and set flags.
+        Read the selected CSV into a list of dictionaries, filter relevant types, and set flags.
         """
         self.lblLoading.config(text="Reading library...")
         try:
@@ -190,20 +197,18 @@ class MainGUI(object):
                 self.fileName, "r", encoding="utf-8", errors="ignore"
             ) as f:
                 reader = csv.DictReader(f)
-                # Convert to a list of dicts
                 data_list = list(reader)
-
         except Exception as e:
             messagebox.showerror("Error", f"Failed to read CSV file: {e}")
             self.writeInLog(f"Error reading CSV file: {e}\n")
             return
 
-        # Add default columns to each row
+        # Add default columns
         for row in data_list:
             row["Add Alert"] = True
             row["Add to Library"] = True
 
-        # Filter relevant item types
+        # Filter for relevant item types
         relevant_types = [
             "journalArticle",
             "conferencePaper",
@@ -221,186 +226,22 @@ class MainGUI(object):
         self.lblLoading.config(text="Library loaded successfully.")
         self.writeInLog("Library loaded successfully.\n")
 
-    def _sendDataToSemanticscholar(self):
-        self.lblLoading.config(text="Connecting to SemanticScholar.com...")
-        self.writeInLog("Connecting to SemanticScholar.com...\n")
-
-        self.email = self.entryEmail.get().strip()
-        self.passwd = self.entryPasswd.get().strip()
-        if not self.email or not self.passwd:
-            self.lblLoading.config(text="Please sign in above")
-            messagebox.showerror(
-                "Error", "Please fill in the login fields above."
-            )
-            self.writeInLog("Error - Login fields are empty.\n")
-            return
-
-        if not self.hasFile:
-            messagebox.showerror(
-                "Error",
-                "Please select a CSV file containing your Zotero libraries.",
-            )
-            self.writeInLog("Error - No CSV file selected.\n")
-            return
-
-        messagebox.showinfo(
-            "Info",
-            "The application may not respond during scraping.\nGo make "
-            "yourself a coffee; it may take a few minutes.",
-        )
-        self.writeInLog(
-            "Info - Scraping started. The application may not respond "
-            "during this process.\n"
-        )
-
-        # Start scraping in a separate thread
-        scrapping_thread = threading.Thread(target=self._scrap_data)
-        scrapping_thread.daemon = (
-            True  # Allows thread to exit when main program exits
-        )
-        scrapping_thread.start()
-
-    def _scrap_data(self):
+    def writeInLog(self, msg):
         """
-        Perform the scraping logic in a separate thread.
+        Write messages to the log file and print them.
         """
-        try:
-            total_items = len(self.data)
-            start_time = time.time()
-            processed_items = 0
-            self._update_progress(processed_items, total_items, start_time)
+        if os.stat(self.logFileName).st_size == 0 and not self.hasWriteIdInLog:
+            self.logFile.write(f"id: {self.email}\n")
+            self.hasWriteIdInLog = True
+        self.logFile.write(msg)
+        print(msg)
 
-            scrapper = SemanticScholarScrapper(
-                self.logFile,
-                self.path,
-                email=self.email,
-                password=self.passwd,
-            )
-            self.queue.put(("status", "Logging in..."))
-            self.writeInLog("Logging in...\n")
-            start_time = time.time()
-
-            is_connected = scrapper.connect_to_account(self.email, self.passwd)
-            if is_connected:
-                self.writeInLog("Connected to SemanticScholar.\n")
-                self.queue.put(
-                    ("status", "Sending data to SemanticScholar...")
-                )
-            else:
-                self.queue.put(
-                    (
-                        "error",
-                        "Unable to connect to SemanticScholar! Please check "
-                        "your login information or connection and try again.",
-                    )
-                )
-                self.writeInLog(
-                    "Error - Unable to connect to SemanticScholar.\n"
-                )
-                return
-
-            Alert = ""
-
-            for index, row in enumerate(self.data):
-                current_item = index + 1
-                title = row.get("Title", "")
-
-                # Skip if the 'Key' is already in the saved set
-                row_key = row.get("Key", "")
-                if row_key in self.savedKeys:
-                    self.writeInLog(
-                        f"Skip: {title} (Item {current_item}/{total_items})"
-                        f", because it has already been saved.\n"
-                    )
-                    processed_items += 1
-                    self._update_progress(
-                        processed_items, total_items, start_time
-                    )
-                    continue
-
-                self.writeInLog(
-                    f"Searching: {title} (Item {current_item}/{total_items})\n"
-                )
-                has_add_paper = scrapper.scrap_paper_by_title(title, False)
-                if not has_add_paper:
-                    msg = f"Could not add '{title}'. It has not been found or "
-                    f"there was some error with SemanticScholar.\n"
-                    self.writeInLog(msg)
-                    Alert += msg
-                    processed_items += 1
-                    self._update_progress(
-                        processed_items, total_items, start_time
-                    )
-                    continue
-
-                # Attempt to add alert and library
-                scrapper.cancel_create_paper_alert()
-                add_alert = scrapper.alert()
-                save_to_library = scrapper.save_to_library()
-
-                if not add_alert and not save_to_library:
-                    msg = f"Could not add alert for '{title}'.\n"
-                    self.writeInLog(msg)
-                    Alert += msg
-                    processed_items += 1
-                    self._update_progress(
-                        processed_items, total_items, start_time
-                    )
-                    continue
-
-                if not add_alert:
-                    self.writeInLog(
-                        f"Could not add alert for '{title}', "
-                        "but added it to library.\n"
-                    )
-                if not save_to_library:
-                    self.writeInLog(
-                        f"Could not save '{title}' to library, "
-                        "but added it to alert.\n"
-                    )
-
-                # Save to saveDataSC.csv
-                # We also keep track of the 'Key' so we won't add it again
-                sanitized_key = row_key.replace('"', '""')
-                sanitized_title = title.replace('"', '""').replace(",", "")
-                self.saveFile.write(
-                    f'"{sanitized_key}", "{sanitized_title}"\n'
-                )
-                self.saveFile.flush()  # Ensure data is written immediately
-                self.savedKeys.add(row_key)  # Mark this key as saved
-
-                self.writeInLog(
-                    f"Added '{title}' to save file: {self.saveFileName}\n"
-                )
-
-                processed_items += 1
-                self._update_progress(processed_items, total_items, start_time)
-
-            self.lblLoading.config(text="Finished sending data.")
-            self.writeInLog("Finished sending data.\n")
-
-            if Alert:
-                self.queue.put(("error", Alert))
-            else:
-                self.queue.put(
-                    ("complete", "Scraping completed successfully.")
-                )
-
-        except Exception as e:
-            self.writeInLog(f"Unexpected error during scraping: {e}\n")
-            self.queue.put(("error", f"An unexpected error occurred: {e}"))
-
-    def _update_progress(self, processed, total, start_time):
-        """
-        Calculate progress and send it to the queue.
-        """
-        elapsed_time = time.time() - start_time
-        if processed == 0:
-            avg_time = 0
-        else:
-            avg_time = elapsed_time / processed
-        remaining = avg_time * (total - processed)
-        self.queue.put(("progress", processed, total, remaining))
+    def onClosing(self):
+        self.root.destroy()
+        if self.saveFile:
+            self.saveFile.close()
+        if self.logFile:
+            self.logFile.close()
 
     def _process_queue(self):
         """
@@ -423,7 +264,7 @@ class MainGUI(object):
                     remaining_str = self._format_time(remaining)
                     if processed == 0:
                         self.lblTimeRemaining.config(
-                            text=f"Estimated time remaining: Unknown"
+                            text="Estimated time remaining: Unknown"
                         )
                     else:
                         self.lblTimeRemaining.config(
@@ -457,41 +298,189 @@ class MainGUI(object):
         else:
             return f"{s}s"
 
-    def writeInLog(self, msg):
+    def generate_unique_key(self, row):
         """
-        Write messages to the log file and print them.
+        Generate a unique key for the CSV row.
+        If the row contains a non-empty "Key" field, use it;
+        otherwise, build a key from the title (and optionally the year).
+        """
+        key = row.get("Key", "").strip()
+        if key:
+            return key
+        title = row.get("Title", "").strip()
+        year = row.get("Year", "").strip() if "Year" in row else ""
+        combined = title + year
+        # Create an MD5 hash from the combined string
+        unique_key = hashlib.md5(combined.encode("utf-8")).hexdigest()
+        return unique_key
 
-        :param msg: Message to log.
-        """
-        if os.stat(self.logFileName).st_size == 0 and not self.hasWriteIdInLog:
-            self.logFile.write(f"id: {self.email}\n")
-            self.hasWriteIdInLog = True
-        self.logFile.write(msg)
-        print(msg)
-
-    def _autoFillID(self):
-        """
-        Autofill the email field from the log file if available.
-        """
-        if not os.path.isfile(self.logFileName):
+    def _sendDataToSemanticscholar(self):
+        self.lblLoading.config(text="Connecting to SemanticScholar.com...")
+        self.writeInLog("Connecting to SemanticScholar.com...\n")
+        self.email = self.entryEmail.get().strip()
+        self.passwd = self.entryPasswd.get().strip()
+        if not self.email or not self.passwd:
+            self.lblLoading.config(text="Please sign in above")
+            messagebox.showerror(
+                "Error", "Please fill in the login fields above."
+            )
+            self.writeInLog("Error - Login fields are empty.\n")
             return
 
+        if not self.hasFile:
+            messagebox.showerror(
+                "Error",
+                "Please select a CSV file containing your Zotero libraries.",
+            )
+            self.writeInLog("Error - No CSV file selected.\n")
+            return
+
+        messagebox.showinfo(
+            "Info",
+            "The application may not respond during scraping.\nGo make yourself a coffee; it may take a few minutes.",
+        )
+        self.writeInLog(
+            "Info - Scraping started. The application may not respond during this process.\n"
+        )
+
+        # Start scraping in a separate thread
+        scrapping_thread = threading.Thread(target=self._scrap_data)
+        scrapping_thread.daemon = True
+        scrapping_thread.start()
+
+    def _scrap_data(self):
+        """
+        Perform the scraping logic in GUI mode in a separate thread.
+        """
         try:
-            with open(
-                self.logFileName, "r", encoding="utf-8", errors="ignore"
-            ) as logFile:
-                first_line = logFile.readline().strip()
-                if first_line.startswith("id:"):
-                    id_part = first_line[4:]
-                    if id_part:
-                        self.entryEmail.insert(0, id_part)
+            total_items = len(self.data)
+            start_time = time.time()
+            processed_items = 0
+            self._update_progress(processed_items, total_items, start_time)
+
+            scrapper = SemanticScholarScrapper(
+                self.logFile, self.path, email=self.email, password=self.passwd
+            )
+            self.queue.put(("status", "Logging in..."))
+            self.writeInLog("Logging in...\n")
+            start_time = time.time()
+
+            is_connected = scrapper.connect_to_account(self.email, self.passwd)
+            if is_connected:
+                self.writeInLog("Connected to SemanticScholar.\n")
+                self.queue.put(
+                    ("status", "Sending data to SemanticScholar...")
+                )
+            else:
+                self.queue.put(
+                    (
+                        "error",
+                        "Unable to connect to SemanticScholar! Please check your login information or connection and try again.",
+                    )
+                )
+                self.writeInLog(
+                    "Error - Unable to connect to SemanticScholar.\n"
+                )
+                return
+
+            Alert = ""
+
+            for index, row in enumerate(self.data):
+                current_item = index + 1
+                title = row.get("Title", "")
+                row_key = self.generate_unique_key(
+                    row
+                )  # Use the unique key helper
+
+                if row_key in self.savedKeys:
+                    self.writeInLog(
+                        f"Skip: {title} (Item {current_item}/{total_items}), because it has already been saved.\n"
+                    )
+                    processed_items += 1
+                    self._update_progress(
+                        processed_items, total_items, start_time
+                    )
+                    continue
+
+                self.writeInLog(
+                    f"Searching: {title} (Item {current_item}/{total_items})\n"
+                )
+                has_add_paper = scrapper.scrap_paper_by_title(title, False)
+                if not has_add_paper:
+                    msg = f"Could not add '{title}'. It has not been found or there was some error with SemanticScholar.\n"
+                    self.writeInLog(msg)
+                    Alert += msg
+                    processed_items += 1
+                    self._update_progress(
+                        processed_items, total_items, start_time
+                    )
+                    continue
+
+                # Attempt to add alert and save to library
+                scrapper.cancel_create_paper_alert()
+                add_alert = scrapper.alert()
+                save_to_library = scrapper.save_to_library()
+
+                if not add_alert and not save_to_library:
+                    msg = f"Could not add alert for '{title}'.\n"
+                    self.writeInLog(msg)
+                    Alert += msg
+                    processed_items += 1
+                    self._update_progress(
+                        processed_items, total_items, start_time
+                    )
+                    continue
+
+                if not add_alert:
+                    self.writeInLog(
+                        f"Could not add alert for '{title}', but added it to library.\n"
+                    )
+                if not save_to_library:
+                    self.writeInLog(
+                        f"Could not save '{title}' to library, but added it to alert.\n"
+                    )
+
+                # Save the unique key and title
+                sanitized_key = row_key.replace('"', '""')
+                sanitized_title = title.replace('"', '""').replace(",", "")
+                self.saveFile.write(
+                    f'"{sanitized_key}", "{sanitized_title}"\n'
+                )
+                self.saveFile.flush()
+                self.savedKeys.add(row_key)
+                self.writeInLog(
+                    f"Added '{title}' to save file: {self.saveFileName}\n"
+                )
+
+                processed_items += 1
+                self._update_progress(processed_items, total_items, start_time)
+
+            self.lblLoading.config(text="Finished sending data.")
+            self.writeInLog("Finished sending data.\n")
+
+            if Alert:
+                self.queue.put(("error", Alert))
+            else:
+                self.queue.put(
+                    ("complete", "Scraping completed successfully.")
+                )
+
         except Exception as e:
-            print(f"Error reading log file for autofill: {e}")
+            self.writeInLog(f"Unexpected error during scraping: {e}\n")
+            self.queue.put(("error", f"An unexpected error occurred: {e}"))
+
+    def _update_progress(self, processed, total, start_time):
+        """
+        Update progress calculations and push them to the GUI update queue.
+        """
+        elapsed_time = time.time() - start_time
+        avg_time = elapsed_time / processed if processed else 0
+        remaining = avg_time * (total - processed)
+        self.queue.put(("progress", processed, total, remaining))
 
     def _scrap_directly(self, email, password, input_bibliography):
         """
-        Run the scraping process directly using provided arguments in CLI mode.
-        (Non-GUI usage)
+        Run the scraping process in CLI mode using provided arguments.
         """
         self.logFile = open(
             self.logFileName, "a", encoding="utf-8", errors="ignore"
@@ -500,7 +489,7 @@ class MainGUI(object):
             self.logFile, self.path, email=email, password=password
         )
 
-        # We'll also open saveFile for writing new data in non-GUI mode
+        # Initialize save file for CLI mode
         if not os.path.exists(self.saveFileName):
             with open(
                 self.saveFileName, "w", encoding="utf-8", newline=""
@@ -508,14 +497,14 @@ class MainGUI(object):
                 writer = csv.writer(f, quoting=csv.QUOTE_ALL)
                 writer.writerow(["Key", "Title"])
         else:
-            # Populate savedKeys
             with open(
                 self.saveFileName, "r", encoding="utf-8", errors="ignore"
             ) as f:
                 reader = csv.DictReader(f)
                 for row in reader:
-                    if "Key" in row and row["Key"]:
-                        self.savedKeys.add(row["Key"])
+                    key_val = row.get("Key", "").strip()
+                    if key_val:
+                        self.savedKeys.add(key_val)
 
         self.saveFile = open(
             self.saveFileName,
@@ -531,8 +520,7 @@ class MainGUI(object):
 
             if not is_connected:
                 print(
-                    "Error: Unable to connect to Semantic Scholar."
-                    " Please check your login information."
+                    "Error: Unable to connect to Semantic Scholar. Please check your login information."
                 )
                 return
 
@@ -545,7 +533,7 @@ class MainGUI(object):
                 )
                 return
 
-            # Read the CSV in non-GUI mode
+            # Read the CSV in CLI mode
             with open(
                 input_bibliography, "r", encoding="utf-8", errors="ignore"
             ) as f:
@@ -556,8 +544,7 @@ class MainGUI(object):
                 print(f"Error: The file '{input_bibliography}' is empty.")
                 return
 
-            # Check if 'Title' column exists
-            if len(data) > 0 and "Title" not in data[0]:
+            if "Title" not in data[0]:
                 print("Error: The input file must contain a 'Title' column.")
                 return
 
@@ -567,19 +554,19 @@ class MainGUI(object):
 
             for index, row in enumerate(data):
                 title = row.get("Title", "")
-                row_key = row.get("Key", "")
+                row_key = self.generate_unique_key(
+                    row
+                )  # Use the unique key helper
 
                 print(f"Processing {index + 1}/{total_items}: {title}")
                 self.logFile.write(f"Searching {title}...\n")
 
                 if row_key in self.savedKeys:
                     print(
-                        f"Skipping '{title}' because "
-                        "it has already been saved."
+                        f"Skipping '{title}' because it has already been saved."
                     )
                     self.logFile.write(
-                        f"Skipping '{title}' because "
-                        "it has already been saved.\n"
+                        f"Skipping '{title}' because it has already been saved.\n"
                     )
                     processed_items += 1
                     self._print_progress(
@@ -587,7 +574,6 @@ class MainGUI(object):
                     )
                     continue
 
-                # Scrape the paper
                 has_add_paper = scrapper.scrap_paper_by_title(
                     title, call_browser=False
                 )
@@ -600,7 +586,6 @@ class MainGUI(object):
                     )
                     continue
 
-                # Add alerts and save to library
                 scrapper.cancel_create_paper_alert()
                 add_alert = scrapper.alert()
                 save_to_library = scrapper.save_to_library()
@@ -611,27 +596,23 @@ class MainGUI(object):
                     print(msg)
                 elif not add_alert:
                     self.logFile.write(
-                        f"Could not add alert for '{title}',"
-                        " but added it to library.\n"
+                        f"Could not add alert for '{title}', but added it to library.\n"
                     )
                     print(
-                        f"Could not add alert for '{title}', "
-                        "but added it to library.\n"
+                        f"Could not add alert for '{title}', but added it to library.\n"
                     )
                 elif not save_to_library:
                     self.logFile.write(
-                        f"Could not save '{title}' to library, "
-                        "but added it to alert.\n"
+                        f"Could not save '{title}' to library, but added it to alert.\n"
                     )
                     print(
-                        f"Could not save '{title}' to library, "
-                        "but added it to alert.\n"
+                        f"Could not save '{title}' to library, but added it to alert.\n"
                     )
                 else:
                     self.logFile.write(f"Added '{title}' successfully.\n")
                     print(f"Added '{title}' successfully.")
 
-                # Write to saveFile
+                # Save to the file and update the set of saved keys
                 sanitized_key = row_key.replace('"', '""')
                 sanitized_title = title.replace('"', '""').replace(",", " ")
                 self.saveFile.write(
@@ -666,10 +647,7 @@ class MainGUI(object):
         Print CLI-mode progress and estimated time.
         """
         elapsed_time = time.time() - start_time
-        if processed == 0:
-            avg_time = 0
-        else:
-            avg_time = elapsed_time / processed
+        avg_time = elapsed_time / processed if processed else 0
         remaining = avg_time * (total - processed)
 
         # Format time
@@ -678,8 +656,7 @@ class MainGUI(object):
 
         # Print progress
         print(
-            f"Progress: {processed}/{total} - Elapsed Time: "
-            f"{elapsed_str} - Estimated Remaining Time: {remaining_str}",
+            f"Progress: {processed}/{total} - Elapsed Time: {elapsed_str} - Estimated Remaining Time: {remaining_str}",
             end="\r",
         )
 
