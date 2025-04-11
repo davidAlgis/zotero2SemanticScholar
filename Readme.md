@@ -45,11 +45,23 @@ pip install -r requirements.txt
 python .\main.py
 ```
 
+### Build Executable
+
 If you want to build the executable manually, follow these steps:
 1. Create a dedicated environment to avoid including unnecessary dependencies:
 ```bash
 python -m venv env
 env\Scripts\activate
+```
+
+2. Install the dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+3. Finally call the build process with:
+```bash
+python setup.py build
 ```
 
 ## Notes
