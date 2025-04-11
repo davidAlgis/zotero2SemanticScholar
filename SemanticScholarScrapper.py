@@ -1,12 +1,13 @@
 # SemanticScholarScrapper.py
 
 import os
-import time
-import distance
 import random
-from seleniumbase import Driver
+import time
+
+import distance
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from seleniumbase import Driver
 
 
 class SemanticScholarScrapper(object):
@@ -14,16 +15,18 @@ class SemanticScholarScrapper(object):
     A Web Scraper for Semantic Scholar with enhanced stealth capabilities using SeleniumBase and Undetected-Chromedriver.
     """
 
-    def __init__(self,
-                 log_file,
-                 path,
-                 timeout=15,
-                 time_between_api_call=0.3,
-                 headless=True,
-                 site_url='https://www.semanticscholar.org/',
-                 site_sign_in_url='https://www.semanticscholar.org/sign-in',
-                 email=None,
-                 password=None):
+    def __init__(
+        self,
+        log_file,
+        path,
+        timeout=15,
+        time_between_api_call=0.3,
+        headless=True,
+        site_url="https://www.semanticscholar.org/",
+        site_sign_in_url="https://www.semanticscholar.org/sign-in",
+        email=None,
+        password=None,
+    ):
         """
         Initializes the SemanticScholarScrapper.
 
@@ -63,27 +66,34 @@ class SemanticScholarScrapper(object):
                 custom_user_agent = (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
                     "AppleWebKit/537.36 (KHTML, like Gecko) "
-                    "Chrome/115.0.0.0 Safari/537.36")
-                self._driver.execute_cdp_cmd("Network.setUserAgentOverride",
-                                             {"userAgent": custom_user_agent})
+                    "Chrome/115.0.0.0 Safari/537.36"
+                )
+                self._driver.execute_cdp_cmd(
+                    "Network.setUserAgentOverride",
+                    {"userAgent": custom_user_agent},
+                )
                 self._driver.execute_script(
                     "Object.defineProperty(navigator, 'webdriver', {get: () => undefined})"
                 )
 
                 # Additional stealth configurations
-                self._driver.execute_script("""
+                self._driver.execute_script(
+                    """
                     // Overwrite the `plugins` property to use a custom getter.
                     Object.defineProperty(navigator, 'plugins', {
                         get: () => [1, 2, 3, 4, 5],
                     });
-                    """)
+                    """
+                )
 
-                self._driver.execute_script("""
+                self._driver.execute_script(
+                    """
                     // Overwrite the `languages` property to use a custom getter.
                     Object.defineProperty(navigator, 'languages', {
                         get: () => ['en-US', 'en'],
                     });
-                    """)
+                    """
+                )
 
                 # Set page load timeout
                 self._driver.set_page_load_timeout(self._timeout)
@@ -138,26 +148,30 @@ class SemanticScholarScrapper(object):
 
             # Find password input
             password_input = self._driver.find_element(
-                By.XPATH, "//input[@type='password']")
+                By.XPATH, "//input[@type='password']"
+            )
             password_input.send_keys(passwd)
             self._random_sleep()
 
             # Find and click the Sign In button
             login_button = self._driver.find_element(
-                By.XPATH, "//span[text()='Sign In']")
+                By.XPATH, "//span[text()='Sign In']"
+            )
             self._driver.execute_script("arguments[0].click();", login_button)
             self._random_sleep(5, 10)
 
             # Verify login by checking for search input presence
-            if self._wait_element_by_class_name("search-input__label",
-                                                "Unable to sign-in."):
+            if self._wait_element_by_class_name(
+                "search-input__label", "Unable to sign-in."
+            ):
                 self.is_connected = True
                 self.log_file.write("Logged in successfully.\n")
                 print("Logged in successfully.")
                 return True
             else:
                 self.log_file.write(
-                    "Login failed. Please check credentials.\n")
+                    "Login failed. Please check credentials.\n"
+                )
                 print("Login failed. Please check credentials.")
                 return False
 
@@ -182,10 +196,11 @@ class SemanticScholarScrapper(object):
 
         for paper_name in paper_title_list:
             try:
-                paper_dict = self.scrap_paper_by_title(str(paper_name),
-                                                       call_browser=False)
+                paper_dict = self.scrap_paper_by_title(
+                    str(paper_name), call_browser=False
+                )
                 if paper_dict:
-                    paper_id = paper_dict.get('paperId')
+                    paper_id = paper_dict.get("paperId")
                     if paper_id:
                         papers_dict[paper_id] = paper_dict
             except KeyError:
@@ -194,9 +209,9 @@ class SemanticScholarScrapper(object):
         self._close_browser()
         return papers_dict
 
-    def scrap_paper_by_title(self,
-                             paper_title: str,
-                             call_browser=True) -> bool:
+    def scrap_paper_by_title(
+        self, paper_title: str, call_browser=True
+    ) -> bool:
         """
         Given a paper title, retrieve its data from Semantic Scholar.
 
@@ -222,16 +237,19 @@ class SemanticScholarScrapper(object):
         """
         try:
             # Retry the last search with the same title
-            if hasattr(self, '_last_search_title'):
+            if hasattr(self, "_last_search_title"):
                 self.log_file.write(
-                    f"Retrying search for: {self._last_search_title}\n")
+                    f"Retrying search for: {self._last_search_title}\n"
+                )
                 print(f"Retrying search for: {self._last_search_title}")
                 self._search_paper_by_name(self._last_search_title)
                 return self._open_first_link_in_search_page(
-                    retry_on_fail=False)
+                    retry_on_fail=False
+                )
             else:
                 self.log_file.write(
-                    "No previous search title available to retry.\n")
+                    "No previous search title available to retry.\n"
+                )
                 print("No previous search title available to retry.")
                 return False
         except Exception as e:
@@ -246,7 +264,9 @@ class SemanticScholarScrapper(object):
         :param paper_title: The title of the paper to search for.
         """
         try:
-            self._last_search_title = paper_title  # Save the title for retry purposes
+            self._last_search_title = (
+                paper_title  # Save the title for retry purposes
+            )
             search_url = f"https://www.semanticscholar.org/search?q={paper_title}&sort=relevance"
             self._driver.get(search_url)
             self._random_sleep(3, 6)
@@ -254,7 +274,8 @@ class SemanticScholarScrapper(object):
             print(f"Search initiated for: {paper_title}")
         except Exception as e:
             self.log_file.write(
-                f"Error during search for {paper_title}: {e}\n")
+                f"Error during search for {paper_title}: {e}\n"
+            )
             print(f"Error during search for {paper_title}: {e}")
 
     def _open_first_link_in_search_page(self, retry_on_fail=True) -> bool:
@@ -263,13 +284,15 @@ class SemanticScholarScrapper(object):
         If a semantic error is encountered, restart the browser and re-log in, then retry the search.
         """
         has_find = self._wait_element_by_class_name(
-            'dropdown-filters__result-count', "Waiting for search results.")
+            "dropdown-filters__result-count", "Waiting for search results."
+        )
 
         if not has_find:
             # Check for error message
             try:
                 error_message = self._driver.find_element(
-                    By.CSS_SELECTOR, '#main-content > p.error-message__code')
+                    By.CSS_SELECTOR, "#main-content > p.error-message__code"
+                )
                 self.log_file.write(
                     f"Semantic Scholar error: {error_message.text}. Retrying...\n"
                 )
@@ -289,26 +312,31 @@ class SemanticScholarScrapper(object):
                 if self._restart_and_relogin():
                     # Retry the last search
                     self.log_file.write(
-                        "Retrying last search after re-login...\n")
+                        "Retrying last search after re-login...\n"
+                    )
                     print("Retrying last search after re-login...")
                     return self._search_and_open_retry()
 
             return False
 
         try:
-            papers_div = self._driver.find_element(By.CLASS_NAME,
-                                                   'result-page')
-            first_paper_link = papers_div.find_element(By.CLASS_NAME,
-                                                       'cl-paper-title')
+            papers_div = self._driver.find_element(
+                By.CLASS_NAME, "result-page"
+            )
+            first_paper_link = papers_div.find_element(
+                By.CLASS_NAME, "cl-paper-title"
+            )
             # Scroll into view to mimic human behavior
             self._driver.execute_script(
                 "arguments[0].scrollIntoView({block: 'center'});",
-                first_paper_link)
+                first_paper_link,
+            )
             self._random_sleep()
 
             # Use JavaScript to click to avoid interception
-            self._driver.execute_script("arguments[0].click();",
-                                        first_paper_link)
+            self._driver.execute_script(
+                "arguments[0].click();", first_paper_link
+            )
             self._random_sleep()
             return True
         except NoSuchElementException as e:
@@ -324,7 +352,8 @@ class SemanticScholarScrapper(object):
                 if self._restart_and_relogin():
                     # Retry the last search
                     self.log_file.write(
-                        "Retrying last search after re-login...\n")
+                        "Retrying last search after re-login...\n"
+                    )
                     print("Retrying last search after re-login...")
                     return self._search_and_open_retry()
 
@@ -342,7 +371,8 @@ class SemanticScholarScrapper(object):
                 if self._restart_and_relogin():
                     # Retry the last search
                     self.log_file.write(
-                        "Retrying last search after re-login...\n")
+                        "Retrying last search after re-login...\n"
+                    )
                     print("Retrying last search after re-login...")
                     return self._search_and_open_retry()
 
@@ -355,13 +385,15 @@ class SemanticScholarScrapper(object):
         :param paper_title: The title of the paper to verify.
         :return: True if the titles match within a Levenshtein distance of 10, else False.
         """
-        if not self._wait_element_by_tag_name('h1',
-                                              "Waiting for paper title."):
+        if not self._wait_element_by_tag_name(
+            "h1", "Waiting for paper title."
+        ):
             return False
 
         try:
             h1 = self._driver.find_element(
-                By.CSS_SELECTOR, 'h1[data-test-id="paper-detail-title"]')
+                By.CSS_SELECTOR, 'h1[data-test-id="paper-detail-title"]'
+            )
             title = h1.text
             distance_score = distance.levenshtein(str(paper_title), title)
             if not (0 <= distance_score <= 10):
@@ -378,7 +410,8 @@ class SemanticScholarScrapper(object):
             return False
         except Exception as e:
             self.log_file.write(
-                f"Unexpected error while verifying paper title: {e}\n")
+                f"Unexpected error while verifying paper title: {e}\n"
+            )
             return False
 
     def _wait_element_by_tag_name(self, tag_name, msg="") -> bool:
@@ -396,11 +429,13 @@ class SemanticScholarScrapper(object):
                     return True
                 time.sleep(1)
             self.log_file.write(
-                f"Error - {msg} Could not find tag {tag_name}\n")
+                f"Error - {msg} Could not find tag {tag_name}\n"
+            )
             return False
         except Exception as e:
             self.log_file.write(
-                f"Error - {msg} {e} - could not find tag {tag_name}\n")
+                f"Error - {msg} {e} - could not find tag {tag_name}\n"
+            )
             return False
 
     def _wait_element_by_name(self, name, msg="") -> bool:
@@ -421,7 +456,8 @@ class SemanticScholarScrapper(object):
             return False
         except Exception as e:
             self.log_file.write(
-                f"Error - {msg} {e} - could not find name {name}\n")
+                f"Error - {msg} {e} - could not find name {name}\n"
+            )
             return False
 
     def _wait_element_by_class_name(self, class_name, msg="") -> bool:
@@ -434,17 +470,20 @@ class SemanticScholarScrapper(object):
         """
         try:
             for _ in range(self._timeout):
-                elements = self._driver.find_elements(By.CLASS_NAME,
-                                                      class_name)
+                elements = self._driver.find_elements(
+                    By.CLASS_NAME, class_name
+                )
                 if elements:
                     return True
                 time.sleep(1)
             self.log_file.write(
-                f"Error - {msg} Could not find class {class_name}\n")
+                f"Error - {msg} Could not find class {class_name}\n"
+            )
             return False
         except Exception as e:
             self.log_file.write(
-                f"Error - {msg} {e} - could not find class {class_name}\n")
+                f"Error - {msg} {e} - could not find class {class_name}\n"
+            )
             return False
 
     def cancel_create_paper_alert(self):
@@ -456,25 +495,31 @@ class SemanticScholarScrapper(object):
             popup_selector = (
                 "html body div#app div.cl-overlay.cl-overlay__content-position--center "
                 "div.cl-overlay__content div.flex-row div.cl-modal__content.cl-modal__centered-offset.alert-modal "
-                "div.alert-modal__content")
+                "div.alert-modal__content"
+            )
             cancel_button_selector = (
                 "html body div#app div.cl-overlay.cl-overlay__content-position--center "
                 "div.cl-overlay__content div.flex-row div.cl-modal__content.cl-modal__centered-offset.alert-modal "
                 "div.alert-modal__content div.alert-modal__alert-information form.create-alert-content "
                 "section.form-buttons button.cl-button.cl-button--no-arrow-divider.cl-button--not-icon-only.cl-button--no-icon.cl-button--has-label.cl-button--font-size-.cl-button--icon-pos-left.cl-button--shape-rectangle.cl-button--size-default.cl-button--type-tertiary.cl-button--density-default "
-                "span.cl-button__label")
+                "span.cl-button__label"
+            )
 
             # Wait for the popup to appear
             for _ in range(self._timeout):
                 try:
-                    popup = self._driver.find_element(By.CSS_SELECTOR,
-                                                      popup_selector)
+                    popup = self._driver.find_element(
+                        By.CSS_SELECTOR, popup_selector
+                    )
                     cancel_button = self._driver.find_element(
-                        By.CSS_SELECTOR, cancel_button_selector)
-                    self._driver.execute_script("arguments[0].click();",
-                                                cancel_button)
+                        By.CSS_SELECTOR, cancel_button_selector
+                    )
+                    self._driver.execute_script(
+                        "arguments[0].click();", cancel_button
+                    )
                     self.log_file.write(
-                        "Alert creation popup canceled successfully.\n")
+                        "Alert creation popup canceled successfully.\n"
+                    )
                     print("Alert creation popup canceled successfully.")
                     self._random_sleep()
                     return
@@ -485,7 +530,8 @@ class SemanticScholarScrapper(object):
 
         except Exception as e:
             self.log_file.write(
-                f"Error while canceling alert creation popup: {e}\n")
+                f"Error while canceling alert creation popup: {e}\n"
+            )
             print(f"Error while canceling alert creation popup: {e}")
 
     def alert(self) -> bool:
@@ -496,24 +542,28 @@ class SemanticScholarScrapper(object):
         """
         try:
             # Check if 'Disable Alert' exists
-            self._driver.find_element(By.XPATH,
-                                      "//span[text()='Disable Alert']")
+            self._driver.find_element(
+                By.XPATH, "//span[text()='Disable Alert']"
+            )
             # Alert is already enabled
             self.log_file.write("Alert is already enabled.\n")
             print("Alert is already enabled.")
             return True
         except NoSuchElementException:
             # Need to enable alert
-            alert_texts = ['Activate Alert', 'Create Alert']
+            alert_texts = ["Activate Alert", "Create Alert"]
             for alert_text in alert_texts:
                 try:
                     alert_element = self._driver.find_element(
-                        By.XPATH, f"//span[text()='{alert_text}']")
-                    self._driver.execute_script("arguments[0].click();",
-                                                alert_element)
+                        By.XPATH, f"//span[text()='{alert_text}']"
+                    )
+                    self._driver.execute_script(
+                        "arguments[0].click();", alert_element
+                    )
                     self._random_sleep()
                     self.log_file.write(
-                        f"Alert '{alert_text}' added successfully.\n")
+                        f"Alert '{alert_text}' added successfully.\n"
+                    )
                     print(f"Alert '{alert_text}' added successfully.")
                     return True
                 except NoSuchElementException:
@@ -545,10 +595,12 @@ class SemanticScholarScrapper(object):
             # Need to save to library
             try:
                 save_button = self._driver.find_element(
-                    By.XPATH, "//span[text()='Save to Library']")
+                    By.XPATH, "//span[text()='Save to Library']"
+                )
                 # Use JavaScript to click to avoid interception
-                self._driver.execute_script("arguments[0].click();",
-                                            save_button)
+                self._driver.execute_script(
+                    "arguments[0].click();", save_button
+                )
                 self._random_sleep()
                 self.log_file.write("Paper saved to library successfully.\n")
                 print("Paper saved to library successfully.")
@@ -579,12 +631,14 @@ class SemanticScholarScrapper(object):
                 print("Re-login successful.")
             else:
                 self.log_file.write(
-                    "Re-login failed. Please check credentials.\n")
+                    "Re-login failed. Please check credentials.\n"
+                )
                 print("Re-login failed. Please check credentials.")
 
             return is_connected
         except Exception as e:
             self.log_file.write(
-                f"Error during browser restart and re-login: {e}\n")
+                f"Error during browser restart and re-login: {e}\n"
+            )
             print(f"Error during browser restart and re-login: {e}")
             return False
