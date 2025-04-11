@@ -7,7 +7,7 @@ However, it can be tedious to manually enter your bibliography into each site, e
 
 In Zotero, export your library in __CSV format__ (File > Export Library).
 
-Download and extract the [`ZoteroToSemanticScholar.zip`](https://github.com/davidAlgis/zotero2SemanticScholar/releases/tag/v0.2) file, then open the executable `ZoteroToSemanticScholar.exe`. Some antivirus software may quarantine the executable for unknown reasons, but as the open-source code in this repository shows, this software contains nothing malicious.
+Download and extract the [`ZoteroToSemanticScholar.zip`](https://github.com/davidAlgis/zotero2SemanticScholar/releases/tag/v0.2) file, then open the executable `ZoteroToSemanticScholar.exe`. Some antivirus software may quarantine the executable for unknown reasons, but as the open-source code in this repository shows, this software contains nothing malicious. You might need to install [Google Chrome](https://www.google.fr/chrome/) browser as it is needed for the scrapping. 
 
 In the interface, complete the login and password fields with your Semantic Scholar account information. Select the CSV file you exported earlier. If you don't select a CSV file, it will look by default for a `bibliography.csv` file in the current folder. Finally, click on _Send data to SemanticScholar.com..._, wait a few minutes... and that's it! 🙂 
 
