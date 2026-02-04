@@ -29,16 +29,6 @@ class SemanticScholarScrapper(object):
     ):
         """
         Initializes the SemanticScholarScrapper.
-
-        :param log_file: File object for logging.
-        :param path: Path to the driver and other resources.
-        :param timeout: Seconds to wait for elements.
-        :param time_between_api_call: Delay between API calls.
-        :param headless: Run browser in headless mode.
-        :param site_url: Base URL for Semantic Scholar.
-        :param site_sign_in_url: Sign-in URL for Semantic Scholar.
-        :param email: User's email for re-login.
-        :param password: User's password for re-login.
         """
         self._site_url = site_url
         self._site_sign_in_url = site_sign_in_url
@@ -50,8 +40,11 @@ class SemanticScholarScrapper(object):
         self._headless = headless
         self.is_connected = False
         self.log_file = log_file
-        self._email = email  # Store email for re-login
-        self._password = password  # Store password for re-login
+        self._email = email
+        self._password = password
+
+        # New flag to remember if we are using Google Login for restarts
+        self._is_google_login = False
 
     def _start_browser(self):
         """
@@ -127,53 +120,113 @@ class SemanticScholarScrapper(object):
         delay = random.uniform(min_delay, max_delay)
         time.sleep(delay)
 
-    def connect_to_account(self, email, passwd) -> bool:
+    def connect_to_account(
+        self, email=None, passwd=None, google_login=False
+    ) -> bool:
         """
         Log in to a Semantic Scholar account.
 
         :param email: User's email.
         :param passwd: User's password.
+        :param google_login: If True, click Google button and wait for manual login.
         :return: True if connected successfully, False otherwise.
         """
+        self._is_google_login = google_login  # Save state for restarts
         self._start_browser()
+
         try:
             # Navigate to sign-in page
             self._driver.get(self._site_sign_in_url)
             self._random_sleep(3, 6)
 
-            # Find email input
-            email_input = self._driver.find_element(By.NAME, "email")
-            email_input.send_keys(email)
-            self._random_sleep()
+            if google_login:
+                self.log_file.write("Attempting Google Login...\n")
+                print("Attempting Google Login...")
 
-            # Find password input
-            password_input = self._driver.find_element(
-                By.XPATH, "//input[@type='password']"
-            )
-            password_input.send_keys(passwd)
-            self._random_sleep()
+                # Click the Google Login button
+                # We try the specific selector provided, then the container as a fallback
+                try:
+                    google_btn = self._driver.find_element(
+                        By.CSS_SELECTOR,
+                        ".cl-login-button--method-google > span:nth-child(2)",
+                    )
+                except NoSuchElementException:
+                    google_btn = self._driver.find_element(
+                        By.CSS_SELECTOR, ".cl-login-button--method-google"
+                    )
 
-            # Find and click the Sign In button
-            login_button = self._driver.find_element(
-                By.XPATH, "//span[text()='Sign In']"
-            )
-            self._driver.execute_script("arguments[0].click();", login_button)
-            self._random_sleep(5, 10)
-
-            # Verify login by checking for search input presence
-            if self._wait_element_by_class_name(
-                "search-input__label", "Unable to sign-in."
-            ):
-                self.is_connected = True
-                self.log_file.write("Logged in successfully.\n")
-                print("Logged in successfully.")
-                return True
-            else:
-                self.log_file.write(
-                    "Login failed. Please check credentials.\n"
+                self._driver.execute_script(
+                    "arguments[0].click();", google_btn
                 )
-                print("Login failed. Please check credentials.")
+
+                print("\n" + "!" * 60)
+                print(
+                    "ACTION REQUIRED: Please log in with Google in the browser window."
+                )
+                print("The script is waiting for you to complete the login...")
+                print("!" * 60 + "\n")
+
+                # Wait loop for manual user interaction (up to 3 minutes)
+                # We check for the 'search-input__label' which appears only after login
+                max_wait = 180
+                start_wait = time.time()
+                while time.time() - start_wait < max_wait:
+                    if self._wait_element_by_class_name(
+                        "search-input__label", msg="Checking login status..."
+                    ):
+                        self.is_connected = True
+                        self.log_file.write(
+                            "Logged in via Google successfully.\n"
+                        )
+                        print("Logged in via Google successfully.")
+                        return True
+                    time.sleep(1)  # Check every second
+
+                print("Google Login timed out.")
+                self.log_file.write("Google Login timed out.\n")
                 return False
+
+            else:
+                # --- Standard Email/Password Login ---
+                if not email or not passwd:
+                    print("Email and password required for standard login.")
+                    return False
+
+                # Find email input
+                email_input = self._driver.find_element(By.NAME, "email")
+                email_input.send_keys(email)
+                self._random_sleep()
+
+                # Find password input
+                password_input = self._driver.find_element(
+                    By.XPATH, "//input[@type='password']"
+                )
+                password_input.send_keys(passwd)
+                self._random_sleep()
+
+                # Find and click the Sign In button
+                login_button = self._driver.find_element(
+                    By.XPATH, "//span[text()='Sign In']"
+                )
+                self._driver.execute_script(
+                    "arguments[0].click();", login_button
+                )
+                self._random_sleep(5, 10)
+
+                # Verify login by checking for search input presence
+                if self._wait_element_by_class_name(
+                    "search-input__label", "Unable to sign-in."
+                ):
+                    self.is_connected = True
+                    self.log_file.write("Logged in successfully.\n")
+                    print("Logged in successfully.")
+                    return True
+                else:
+                    self.log_file.write(
+                        "Login failed. Please check credentials.\n"
+                    )
+                    print("Login failed. Please check credentials.")
+                    return False
 
         except NoSuchElementException as e:
             self.log_file.write(f"Login error: {e}\n")
@@ -267,7 +320,10 @@ class SemanticScholarScrapper(object):
             self._last_search_title = (
                 paper_title  # Save the title for retry purposes
             )
-            search_url = f"https://www.semanticscholar.org/search?q={paper_title}&sort=relevance"
+            search_url = (
+                f"https://www.semanticscholar.org/search?q="
+                f"{paper_title}&sort=relevance"
+            )
             self._driver.get(search_url)
             self._random_sleep(3, 6)
             self.log_file.write(f"Search initiated for: {paper_title}\n")
@@ -294,10 +350,12 @@ class SemanticScholarScrapper(object):
                     By.CSS_SELECTOR, "#main-content > p.error-message__code"
                 )
                 self.log_file.write(
-                    f"Semantic Scholar error: {error_message.text}. Retrying...\n"
+                    f"Semantic Scholar error: "
+                    f"{error_message.text}. Retrying...\n"
                 )
                 print(
-                    f"Semantic Scholar error: {error_message.text}. Retrying..."
+                    f"Semantic Scholar error: "
+                    f"{error_message.text}. Retrying..."
                 )
             except NoSuchElementException:
                 self.log_file.write(
@@ -341,10 +399,12 @@ class SemanticScholarScrapper(object):
             return True
         except NoSuchElementException as e:
             self.log_file.write(
-                f"Error: Could not find the first paper link: {e}. Retrying...\n"
+                f"Error: Could not find the first paper link: "
+                f"{e}. Retrying...\n"
             )
             print(
-                f"Error: Could not find the first paper link: {e}. Retrying..."
+                f"Error: Could not find the first paper link: "
+                f"{e}. Retrying..."
             )
 
             # Restart the browser and re-login
@@ -360,10 +420,12 @@ class SemanticScholarScrapper(object):
             return False
         except Exception as e:
             self.log_file.write(
-                f"Unexpected error when clicking the first paper link: {e}. Retrying...\n"
+                f"Unexpected error when clicking the first paper link: "
+                f"{e}. Retrying...\n"
             )
             print(
-                f"Unexpected error when clicking the first paper link: {e}. Retrying..."
+                f"Unexpected error when clicking the first paper link: "
+                f"{e}. Retrying..."
             )
 
             # Restart the browser and re-login
@@ -398,11 +460,13 @@ class SemanticScholarScrapper(object):
             distance_score = distance.levenshtein(str(paper_title), title)
             if not (0 <= distance_score <= 10):
                 self.log_file.write(
-                    f"{paper_title} does not match the found title {title} (Levenshtein distance: {distance_score}).\n"
+                    f"{paper_title} does not match the found title "
+                    f"{title} (Levenshtein distance: {distance_score}).\n"
                 )
                 return False
             self.log_file.write(
-                f"Title matched: {title} (Levenshtein distance: {distance_score}).\n"
+                f"Title matched: {title} (Levenshtein distance: "
+                f"{distance_score}).\n"
             )
             return True
         except NoSuchElementException as e:
@@ -624,7 +688,11 @@ class SemanticScholarScrapper(object):
             # Log in again
             self.log_file.write("Re-logging into Semantic Scholar...\n")
             print("Re-logging into Semantic Scholar...")
-            is_connected = self.connect_to_account(self._email, self._password)
+
+            # Pass the saved google_login state
+            is_connected = self.connect_to_account(
+                self._email, self._password, google_login=self._is_google_login
+            )
 
             if is_connected:
                 self.log_file.write("Re-login successful.\n")

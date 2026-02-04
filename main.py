@@ -46,6 +46,14 @@ class MainGUI(object):
         self.lblPasswd = ttk.Label(self.root, text="Password:")
         self.entryPasswd = ttk.Entry(self.root, show="*")
 
+        # Google Login Checkbox
+        self.google_login_var = tk.BooleanVar()
+        self.chkGoogle = ttk.Checkbutton(
+            self.root,
+            text="Login with Google (Requires visible browser)",
+            variable=self.google_login_var,
+        )
+
         self.buttonSelectFiles = ttk.Button(
             self.root,
             text="Select a CSV file exported by Zotero...",
@@ -166,6 +174,8 @@ class MainGUI(object):
         self.entryEmail.pack(fill="x", padx=10, pady=(0, 10))
         self.lblPasswd.pack(anchor="nw", **padding_options)
         self.entryPasswd.pack(fill="x", padx=10, pady=(0, 10))
+        self.chkGoogle.pack(anchor="nw", **padding_options, pady=(0, 10))
+
         self.separator.pack(fill="x", pady=10, padx=10)
         self.buttonSelectFiles.pack(expand=True, fill="both", padx=10, pady=10)
         self.separator.pack(fill="x", padx=10, pady=(10, 0))
@@ -319,7 +329,10 @@ class MainGUI(object):
         self.writeInLog("Connecting to SemanticScholar.com...\n")
         self.email = self.entryEmail.get().strip()
         self.passwd = self.entryPasswd.get().strip()
-        if not self.email or not self.passwd:
+        is_google_login = self.google_login_var.get()
+
+        # Validation: Password is only required if NOT using Google Login
+        if not self.email or (not self.passwd and not is_google_login):
             self.lblLoading.config(text="Please sign in above")
             messagebox.showerror(
                 "Error", "Please fill in the login fields above."
@@ -358,14 +371,29 @@ class MainGUI(object):
             processed_items = 0
             self._update_progress(processed_items, total_items, start_time)
 
+            # --- UPDATED SECTION ---
+            use_google = self.google_login_var.get()
+
+            # If Google Login is used, Headless MUST be False
+            use_headless = not use_google
+
             scrapper = SemanticScholarScrapper(
-                self.logFile, self.path, email=self.email, password=self.passwd
+                self.logFile,
+                self.path,
+                email=self.email,
+                password=self.passwd,
+                headless=use_headless,  # Pass the headless preference
             )
+            # -----------------------
+
             self.queue.put(("status", "Logging in..."))
             self.writeInLog("Logging in...\n")
             start_time = time.time()
 
-            is_connected = scrapper.connect_to_account(self.email, self.passwd)
+            # Pass the google_login flag to the connection method
+            is_connected = scrapper.connect_to_account(
+                self.email, self.passwd, google_login=use_google
+            )
             if is_connected:
                 self.writeInLog("Connected to SemanticScholar.\n")
                 self.queue.put(
@@ -394,7 +422,8 @@ class MainGUI(object):
 
                 if row_key in self.savedKeys:
                     self.writeInLog(
-                        f"Skip: {title} (Item {current_item}/{total_items}), because it has already been saved.\n"
+                        f"Skip: {title} (Item "
+                        f"{current_item}/{total_items}), because it has already been saved.\n"
                     )
                     processed_items += 1
                     self._update_progress(
@@ -407,7 +436,8 @@ class MainGUI(object):
                 )
                 has_add_paper = scrapper.scrap_paper_by_title(title, False)
                 if not has_add_paper:
-                    msg = f"Could not add '{title}'. It has not been found or there was some error with SemanticScholar.\n"
+                    msg = f"Could not add '{title}'. It"
+                    msg += " has not been found or there was some error with SemanticScholar.\n"
                     self.writeInLog(msg)
                     Alert += msg
                     processed_items += 1
@@ -433,11 +463,13 @@ class MainGUI(object):
 
                 if not add_alert:
                     self.writeInLog(
-                        f"Could not add alert for '{title}', but added it to library.\n"
+                        f"Could not add alert for '{title}'"
+                        f", but added it to library.\n"
                     )
                 if not save_to_library:
                     self.writeInLog(
-                        f"Could not save '{title}' to library, but added it to alert.\n"
+                        f"Could not save '{title}'"
+                        f" to library, but added it to alert.\n"
                     )
 
                 # Save the unique key and title
@@ -478,15 +510,24 @@ class MainGUI(object):
         remaining = avg_time * (total - processed)
         self.queue.put(("progress", processed, total, remaining))
 
-    def _scrap_directly(self, email, password, input_bibliography):
+    def _scrap_directly(
+        self, email, password, input_bibliography, google_login=False
+    ):
         """
         Run the scraping process in CLI mode using provided arguments.
         """
         self.logFile = open(
             self.logFileName, "a", encoding="utf-8", errors="ignore"
         )
+
+        # Determine headless mode based on Google Login
+        use_headless = not google_login
         scrapper = SemanticScholarScrapper(
-            self.logFile, self.path, email=email, password=password
+            self.logFile,
+            self.path,
+            email=email,
+            password=password,
+            headless=use_headless,
         )
 
         # Initialize save file for CLI mode
@@ -516,7 +557,9 @@ class MainGUI(object):
 
         try:
             self.logFile.write("Logging in...\n")
-            is_connected = scrapper.connect_to_account(email, password)
+            is_connected = scrapper.connect_to_account(
+                email, password, google_login=google_login
+            )
 
             if not is_connected:
                 print(
@@ -563,10 +606,12 @@ class MainGUI(object):
 
                 if row_key in self.savedKeys:
                     print(
-                        f"Skipping '{title}' because it has already been saved."
+                        f"Skipping '{title}'"
+                        f" because it has already been saved."
                     )
                     self.logFile.write(
-                        f"Skipping '{title}' because it has already been saved.\n"
+                        f"Skipping '{title}'"
+                        f" because it has already been saved.\n"
                     )
                     processed_items += 1
                     self._print_progress(
@@ -596,17 +641,21 @@ class MainGUI(object):
                     print(msg)
                 elif not add_alert:
                     self.logFile.write(
-                        f"Could not add alert for '{title}', but added it to library.\n"
+                        f"Could not add alert for '{title}"
+                        f"', but added it to library.\n"
                     )
                     print(
-                        f"Could not add alert for '{title}', but added it to library.\n"
+                        f"Could not add alert for '{title}"
+                        f"', but added it to library.\n"
                     )
                 elif not save_to_library:
                     self.logFile.write(
-                        f"Could not save '{title}' to library, but added it to alert.\n"
+                        f"Could not save '{title}"
+                        f"' to library, but added it to alert.\n"
                     )
                     print(
-                        f"Could not save '{title}' to library, but added it to alert.\n"
+                        f"Could not save '{title}"
+                        f"' to library, but added it to alert.\n"
                     )
                 else:
                     self.logFile.write(f"Added '{title}' successfully.\n")
@@ -656,7 +705,8 @@ class MainGUI(object):
 
         # Print progress
         print(
-            f"Progress: {processed}/{total} - Elapsed Time: {elapsed_str} - Estimated Remaining Time: {remaining_str}",
+            f"Progress: {processed}/{total} - Elapsed Time: "
+            f"{elapsed_str} - Estimated Remaining Time: {remaining_str}",
             end="\r",
         )
 
@@ -676,6 +726,12 @@ if __name__ == "__main__":
         type=str,
         help="Path to the input bibliography CSV file.",
     )
+    parser.add_argument(
+        "-g",
+        "--google",
+        action="store_true",
+        help="Use Login with Google (Opens visible browser).",
+    )
     args = parser.parse_args()
 
     if args.login and args.input_bibliography:
@@ -693,7 +749,9 @@ if __name__ == "__main__":
         main.path = path
         main.logFileName = log_file_name
         main.saveFileName = save_file_name
-        main._scrap_directly(args.login, password, args.input_bibliography)
+        main._scrap_directly(
+            args.login, password, args.input_bibliography, args.google
+        )
     else:
         # Run GUI mode
         gui = MainGUI()
